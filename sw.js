@@ -1,5 +1,5 @@
 // Ball Pit Survivor サービスワーカー
-const CACHE_NAME = 'bps-v2';
+const CACHE_NAME = 'bps-v3';
 const ASSETS = [
   './',
   './ball_pit_survivor.html',
