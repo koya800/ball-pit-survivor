@@ -63,6 +63,29 @@
   #quit-btn:active { transform:scale(0.95); }
   #quit-btn.show { display:block; }
 
+  #move-arrows {
+    position:absolute; bottom:14px; left:50%;
+    transform:translateX(-50%);
+    display:none; gap:50px;
+    z-index:7; pointer-events:none;
+  }
+  #move-arrows.show { display:flex; }
+  .move-btn {
+    pointer-events:auto;
+    width:56px; height:56px; border-radius:50%;
+    background:rgba(0,0,0,0.55);
+    border:2px solid rgba(76,201,240,0.7);
+    color:#4cc9f0; font-size:24px; font-weight:bold;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer; user-select:none;
+    -webkit-tap-highlight-color:transparent;
+    touch-action:none;
+  }
+  .move-btn:active {
+    transform:scale(0.92);
+    background:rgba(76,201,240,0.3);
+  }
+
   #weapon-bar {
     position:absolute; left:8px; bottom:12px;
     display:flex; flex-direction:column; gap:4px;
@@ -166,6 +189,10 @@
 
   <div id="weapon-bar"></div>
   <button id="quit-btn">✕ 中断</button>
+  <div id="move-arrows">
+    <button class="move-btn" id="move-l" type="button">◀</button>
+    <button class="move-btn" id="move-r" type="button">▶</button>
+  </div>
 
   <div id="overlay" class="show">
     <div class="panel" id="panel"></div>
@@ -1243,6 +1270,19 @@ window.addEventListener('keydown', (e) => {
   if (e.key==='ArrowLeft' || e.key==='a') state.player.targetLane = Math.max(0, state.player.targetLane-1);
   if (e.key==='ArrowRight' || e.key==='d') state.player.targetLane = Math.min(2, state.player.targetLane+1);
 });
+function setupMoveButton(id, dir) {
+  const btn = document.getElementById(id);
+  const handler = (e) => {
+    e.preventDefault(); e.stopPropagation();
+    initAudio();
+    if (!state.running) return;
+    state.player.targetLane = Math.max(0, Math.min(2, state.player.targetLane + dir));
+  };
+  btn.addEventListener('touchstart', handler, { passive:false });
+  btn.addEventListener('mousedown', handler);
+}
+setupMoveButton('move-l', -1);
+setupMoveButton('move-r', +1);
 canvas.addEventListener('mousedown', (e) => {
   initAudio();
   if (!state.running) return;
@@ -1509,6 +1549,7 @@ function startGame() {
   applyEquippedToPlayer(state.player);
   document.getElementById('overlay').classList.remove('show');
   document.getElementById('quit-btn').classList.add('show');
+  document.getElementById('move-arrows').classList.add('show');
   initAudio();
   SFX.gameStart();
   startBGM();
@@ -1521,6 +1562,7 @@ function gameOver() {
   SFX.gameover();
   stopBGM();
   document.getElementById('quit-btn').classList.remove('show');
+  document.getElementById('move-arrows').classList.remove('show');
   const panel = document.getElementById('panel');
   panel.innerHTML = `
     <h2>GAME OVER</h2>
@@ -1541,6 +1583,7 @@ function victory() {
   SFX.victory();
   stopBGM();
   document.getElementById('quit-btn').classList.remove('show');
+  document.getElementById('move-arrows').classList.remove('show');
   const panel = document.getElementById('panel');
   panel.innerHTML = `
     <h2 style="color:#ffd166">🏆 CLEAR! 🏆</h2>
