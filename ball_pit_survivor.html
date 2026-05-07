@@ -2509,10 +2509,10 @@ function showInventory() {
     const cur = state.equipped[slot];
     if (cur) {
       const rar = RARITY[cur.rarity];
-      html += '<div style="border:3px solid ' + rar.color + ';border-radius:8px;padding:8px;margin:5px 0;background:rgba(0,0,0,0.3);box-shadow:0 0 10px ' + rar.color + '55">';
-      html += '<div style="font-weight:bold;color:' + rar.color + '">⚙ 装備中: ' + cur.name + '</div>';
-      html += '<div style="font-size:11px;line-height:1.5;margin:4px 0">' + cur.stats.map(s => statText(s)).join(' / ') + '</div>';
-      html += '<button class="equip-act" data-act="unequip" data-slot="' + slot + '" style="background:#666;color:#fff;border:none;padding:5px 12px;border-radius:5px;font-size:11px;cursor:pointer">外す</button>';
+      html += '<div style="border:3px solid ' + rar.color + ';border-radius:8px;padding:10px;margin:5px 0;background:rgba(0,0,0,0.3);box-shadow:0 0 10px ' + rar.color + '55">';
+      html += '<div style="font-weight:bold;color:' + rar.color + ';font-size:13px">⚙ 装備中: ' + cur.name + '</div>';
+      html += '<div style="font-size:11px;line-height:1.5;margin:4px 0 8px">' + cur.stats.map(s => statText(s)).join(' / ') + '</div>';
+      html += '<button class="equip-act" data-act="unequip" data-slot="' + slot + '" style="display:block;width:100%;background:#666;color:#fff;border:none;padding:10px;border-radius:6px;font-size:13px;font-weight:bold;cursor:pointer">外す</button>';
       html += '</div>';
     } else {
       html += '<div style="font-size:11px;opacity:.55;margin:5px 0;padding:6px;border:1px dashed #555;border-radius:6px">未装備</div>';
@@ -2525,14 +2525,12 @@ function showInventory() {
       html += '<div style="font-size:10px;opacity:.7;margin-top:6px">所持: ' + items.length + '</div>';
       for (const item of items) {
         const rar = RARITY[item.rarity];
-        html += '<div style="border:2px solid ' + rar.color + ';border-radius:6px;padding:6px;margin:3px 0;background:rgba(0,0,0,0.25);display:flex;justify-content:space-between;align-items:center;gap:6px">';
-        html += '<div style="flex:1;min-width:0">';
-        html += '<div style="font-size:12px;font-weight:bold;color:' + rar.color + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + item.name + '</div>';
-        html += '<div style="font-size:10px;line-height:1.4;opacity:.85">' + item.stats.map(s => statText(s)).join(' / ') + '</div>';
-        html += '</div>';
-        html += '<div style="display:flex;flex-direction:column;gap:3px">';
-        html += '<button class="equip-act" data-act="equip" data-idx="' + item._idx + '" style="background:#4cc9f0;color:#000;border:none;padding:4px 8px;border-radius:4px;font-size:10px;font-weight:bold;cursor:pointer">装備</button>';
-        html += '<button class="equip-act" data-act="discard" data-idx="' + item._idx + '" style="background:#444;color:#ff6b6b;border:1px solid #ff6b6b;padding:3px 8px;border-radius:4px;font-size:9px;cursor:pointer">捨</button>';
+        html += '<div style="border:2px solid ' + rar.color + ';border-radius:6px;padding:8px;margin:5px 0;background:rgba(0,0,0,0.25)">';
+        html += '<div style="font-size:13px;font-weight:bold;color:' + rar.color + ';margin-bottom:3px">' + item.name + '</div>';
+        html += '<div style="font-size:11px;line-height:1.4;opacity:.85;margin-bottom:8px">' + item.stats.map(s => statText(s)).join(' / ') + '</div>';
+        html += '<div style="display:flex;gap:6px">';
+        html += '<button class="equip-act" data-act="equip" data-idx="' + item._idx + '" style="flex:1;background:#4cc9f0;color:#000;border:none;padding:10px;border-radius:6px;font-size:13px;font-weight:bold;cursor:pointer">装備する</button>';
+        html += '<button class="equip-act" data-act="discard" data-idx="' + item._idx + '" style="background:#3a1a1a;color:#ff6b6b;border:1px solid #ff6b6b;padding:10px 16px;border-radius:6px;font-size:13px;font-weight:bold;cursor:pointer">🗑 捨てる</button>';
         html += '</div></div>';
       }
     }
