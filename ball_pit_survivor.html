@@ -510,7 +510,15 @@ const WEAPON_DEFS = {
         w.cd = interval;
         const ms = (p.multishot - 1) + (lvl>=6 ? 3 : lvl>=3 ? 2 : 1);
         const dmg = Math.ceil((14 + (lvl>=2?5:0) + (lvl>=4?6:0) + (lvl>=7?8:0)) * p.atkMul);
-        const offsets = ms<=1?[0]:ms===2?[-10,10]:ms===3?[-16,0,16]:[-22,-8,8,22];
+        // ms に応じて弾を均等に並べる（任意の数に対応）
+        let offsets;
+        if (ms <= 1) offsets = [0];
+        else {
+          const spacing = 14;
+          const halfW = (ms - 1) * spacing / 2;
+          offsets = [];
+          for (let i = 0; i < ms; i++) offsets.push(-halfW + i * spacing);
+        }
         for (const off of offsets) {
           state.bullets.push({ x:p.x+off, y:p.y-PLAYER_SIZE, vx:0, vy:-600*p.bulletSpeedMul, r:6*p.bulletSize, dmg, pierce:p.pierce, lane:p.lane, color:'#4cc9f0' });
         }
@@ -955,7 +963,7 @@ const PASSIVES = {
   attack:      { name:'攻撃力',         icon:'⚔', desc:'弾のダメージ +20%', apply:p=>p.atkMul*=1.2 },
   fireRate:    { name:'連射速度',       icon:'🔥', desc:'発射間隔 -20%',     apply:p=>p.fireRateMul*=1.25 },
   bulletSpeed: { name:'弾速',           icon:'💨', desc:'弾速 +20%',         apply:p=>p.bulletSpeedMul*=1.2 },
-  multishot:   { name:'マルチショット', icon:'🎯', desc:'同時発射数 +1',     apply:p=>p.multishot=Math.min(4,p.multishot+1) },
+  multishot:   { name:'マルチショット', icon:'🎯', desc:'同時発射数 +1',     apply:p=>p.multishot+=1 },
   pickupRange: { name:'取得範囲',       icon:'🧲', desc:'XP吸引範囲 +50%',   apply:p=>p.pickupRange*=1.5 },
   maxHp:       { name:'最大HP',         icon:'❤', desc:'+25 / 全回復',      apply:p=>{p.maxHp+=25; p.hp=p.maxHp;} },
   heal:        { name:'全回復',         icon:'🛡', desc:'HP最大まで回復',    apply:p=>p.hp=p.maxHp },
