@@ -2655,47 +2655,74 @@ function addToInventory(eq) {
 
 // ---- 装備管理画面（タイトルから） ----
 function showInventory() {
+  if (!state._invTab) state._invTab = 'weapon';
+  const activeTab = state._invTab;
   const panel = document.getElementById('panel');
   let html = '<h2>🎒 装備管理</h2>';
-  html += '<p style="font-size:11px;opacity:.7">タイトルでのみ付け替え可能。スロットごとに装備すると戦闘で効果発揮</p>';
+  html += '<p style="font-size:11px;opacity:.7;margin-bottom:8px">タブで装備種を切替・装備中はそのスロットで効果発揮</p>';
 
+  // タブヘッダ
+  html += '<div style="display:flex;gap:4px;margin-bottom:10px">';
   for (const slot of EQUIP_SLOTS) {
-    html += '<h3 style="margin-top:12px">' + SLOT_LABELS[slot] + '</h3>';
-    const cur = state.equipped[slot];
-    const slotIcon = SLOT_ICONS[slot] || '';
-    if (cur) {
-      const rar = RARITY[cur.rarity];
-      html += '<div style="border:3px solid ' + rar.color + ';border-radius:8px;padding:10px;margin:5px 0;background:rgba(0,0,0,0.3);box-shadow:0 0 10px ' + rar.color + '55">';
-      html += '<div style="font-weight:bold;color:' + rar.color + ';font-size:13px">⚙ 装備中: <span style="font-size:18px;margin:0 4px">' + slotIcon + '</span>' + cur.name + '</div>';
-      html += '<div style="font-size:11px;line-height:1.5;margin:4px 0 8px">' + cur.stats.map(s => statText(s)).join(' / ') + '</div>';
-      html += '<button class="equip-act" data-act="unequip" data-slot="' + slot + '" style="display:block;width:100%;background:#666;color:#fff;border:none;padding:10px;border-radius:6px;font-size:13px;font-weight:bold;cursor:pointer">外す</button>';
-      html += '</div>';
-    } else {
-      html += '<div style="font-size:11px;opacity:.55;margin:5px 0;padding:6px;border:1px dashed #555;border-radius:6px">未装備</div>';
-    }
+    const cnt = state.inventory.filter(it => it.slot === slot).length;
+    const newCnt = state.inventory.filter(it => it.slot === slot && it._isNew).length;
+    const isActive = slot === activeTab;
+    const newDot = newCnt > 0 ? '<span style="display:inline-block;width:7px;height:7px;background:#ff4757;border-radius:50%;margin-left:4px;vertical-align:middle;box-shadow:0 0 5px #ff4757"></span>' : '';
+    const bg = isActive ? 'linear-gradient(180deg,#4cc9f0,#3a86ff)' : 'rgba(0,0,0,0.4)';
+    const col = isActive ? '#001' : '#fff';
+    const brd = isActive ? '#4cc9f0' : '#555';
+    html += '<button class="inv-tab" data-slot="' + slot + '" style="flex:1;background:' + bg + ';color:' + col + ';border:1.5px solid ' + brd + ';padding:6px 4px;border-radius:6px;font-size:11px;font-weight:bold;cursor:pointer;line-height:1.2"><div style="font-size:18px">' + SLOT_ICONS[slot] + '</div><div style="font-size:10px;margin-top:2px">' + cnt + newDot + '</div></button>';
+  }
+  html += '</div>';
 
-    const items = state.inventory.map((eq, idx) => ({...eq, _idx: idx})).filter(it => it.slot === slot);
-    items.sort((a, b) => RARITY[a.rarity].weight - RARITY[b.rarity].weight);
+  const cur = state.equipped[activeTab];
+  const slotIcon = SLOT_ICONS[activeTab] || '';
+  html += '<h3 style="margin:6px 0 4px;font-size:12px;color:#aaa">' + SLOT_LABELS[activeTab] + '</h3>';
+  if (cur) {
+    const rar = RARITY[cur.rarity];
+    html += '<div style="border:3px solid ' + rar.color + ';border-radius:8px;padding:8px;margin:5px 0;background:rgba(0,0,0,0.3);box-shadow:0 0 10px ' + rar.color + '55">';
+    html += '<div style="font-weight:bold;color:' + rar.color + ';font-size:13px">⚙ 装備中: <span style="font-size:16px;margin:0 3px">' + slotIcon + '</span>' + cur.name + '</div>';
+    html += '<div style="font-size:11px;line-height:1.4;margin:3px 0 6px">' + cur.stats.map(s => statText(s)).join(' / ') + '</div>';
+    html += '<button class="equip-act" data-act="unequip" data-slot="' + activeTab + '" style="display:block;width:100%;background:#666;color:#fff;border:none;padding:8px;border-radius:6px;font-size:12px;font-weight:bold;cursor:pointer">外す</button>';
+    html += '</div>';
+  } else {
+    html += '<div style="font-size:11px;opacity:.55;margin:5px 0;padding:6px;border:1px dashed #555;border-radius:6px">未装備</div>';
+  }
 
-    if (items.length > 0) {
-      html += '<div style="font-size:10px;opacity:.7;margin-top:6px">所持: ' + items.length + '</div>';
-      for (const item of items) {
-        const rar = RARITY[item.rarity];
-        const newBadge = item._isNew ? '<span style="display:inline-block;background:#ff4757;color:#fff;font-size:9px;font-weight:bold;padding:1px 5px;border-radius:6px;margin-right:5px;box-shadow:0 0 6px rgba(255,71,87,0.7);vertical-align:middle">NEW</span>' : '';
-        html += '<div style="border:2px solid ' + rar.color + ';border-radius:6px;padding:8px;margin:5px 0;background:rgba(0,0,0,0.25)' + (item._isNew ? ';box-shadow:0 0 8px rgba(255,71,87,0.4)' : '') + '">';
-        html += '<div style="font-size:13px;font-weight:bold;color:' + rar.color + ';margin-bottom:3px">' + newBadge + '<span style="font-size:18px;margin-right:4px">' + slotIcon + '</span>' + item.name + '</div>';
-        html += '<div style="font-size:11px;line-height:1.4;opacity:.85;margin-bottom:8px">' + item.stats.map(s => statText(s)).join(' / ') + '</div>';
-        html += '<div style="display:flex;gap:6px">';
-        html += '<button class="equip-act" data-act="equip" data-idx="' + item._idx + '" style="flex:1;background:#4cc9f0;color:#000;border:none;padding:10px;border-radius:6px;font-size:13px;font-weight:bold;cursor:pointer">装備する</button>';
-        html += '<button class="equip-act" data-act="discard" data-idx="' + item._idx + '" style="background:#3a1a1a;color:#ff6b6b;border:1px solid #ff6b6b;padding:10px 16px;border-radius:6px;font-size:13px;font-weight:bold;cursor:pointer">🗑 捨てる</button>';
-        html += '</div></div>';
-      }
+  // 所持アイテム（このタブのみ・コンパクト版・NEW優先ソート）
+  const items = state.inventory.map((eq, idx) => ({...eq, _idx: idx})).filter(it => it.slot === activeTab);
+  items.sort((a, b) => {
+    if (!!a._isNew !== !!b._isNew) return a._isNew ? -1 : 1;
+    return RARITY[a.rarity].weight - RARITY[b.rarity].weight;
+  });
+
+  if (items.length > 0) {
+    html += '<div style="font-size:10px;opacity:.7;margin-top:8px">所持: ' + items.length + '</div>';
+    for (const item of items) {
+      const rar = RARITY[item.rarity];
+      const isNew = !!item._isNew;
+      const newBadge = isNew ? '<span style="display:inline-block;background:#ff4757;color:#fff;font-size:9px;font-weight:bold;padding:1px 5px;border-radius:6px;margin-right:4px;box-shadow:0 0 6px rgba(255,71,87,0.7);vertical-align:middle">NEW</span>' : '';
+      const cardShadow = isNew ? ';box-shadow:0 0 8px rgba(255,71,87,0.4)' : '';
+      html += '<div style="border:2px solid ' + rar.color + ';border-radius:6px;padding:6px 8px;margin:4px 0;background:rgba(0,0,0,0.25)' + cardShadow + '">';
+      html += '<div style="font-size:12px;font-weight:bold;color:' + rar.color + ';margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + newBadge + '<span style="font-size:15px;margin-right:3px">' + slotIcon + '</span>' + item.name + '</div>';
+      html += '<div style="font-size:10px;line-height:1.35;opacity:.85;margin-bottom:6px">' + item.stats.map(s => statText(s)).join(' / ') + '</div>';
+      html += '<div style="display:flex;gap:4px">';
+      html += '<button class="equip-act" data-act="equip" data-idx="' + item._idx + '" style="flex:1;background:#4cc9f0;color:#000;border:none;padding:8px;border-radius:5px;font-size:12px;font-weight:bold;cursor:pointer">装備</button>';
+      html += '<button class="equip-act" data-act="discard" data-idx="' + item._idx + '" style="background:#3a1a1a;color:#ff6b6b;border:1px solid #ff6b6b;padding:8px 12px;border-radius:5px;font-size:12px;font-weight:bold;cursor:pointer">🗑</button>';
+      html += '</div></div>';
     }
+  } else {
+    html += '<div style="font-size:11px;opacity:.5;text-align:center;margin:12px 0">このスロットの装備はまだ無し</div>';
   }
 
   html += '<button class="start-btn" id="inv-back" style="margin-top:12px">戻る</button>';
   panel.innerHTML = html;
   document.getElementById('overlay').classList.add('show');
+
+  // タブ切替
+  panel.querySelectorAll('.inv-tab').forEach(btn => {
+    btn.onclick = () => { state._invTab = btn.dataset.slot; showInventory(); };
+  });
 
   panel.querySelectorAll('.equip-act').forEach(btn => {
     btn.onclick = () => {
