@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>アイコン生成</title>
+<style>
+  body { font-family: sans-serif; background:#1a1a2e; color:#fff; padding:20px; }
+  canvas { background:#0a0a14; margin:10px; border:2px solid #4cc9f0; }
+  button { background:#4cc9f0; color:#000; border:none; padding:10px 20px; font-size:16px; font-weight:bold; border-radius:8px; cursor:pointer; margin:5px; }
+  .row { margin:10px 0; }
+  h1 { color:#4cc9f0; }
+</style>
+</head>
+<body>
+<h1>🎯 Ball Pit Survivor アイコン生成</h1>
+<p>下のボタンを押してアイコンPNGを保存してください。<br>
+<b>icon-192.png</b> と <b>icon-512.png</b> の2つを保存します。</p>
+
+<div class="row">
+  <canvas id="c192" width="192" height="192"></canvas>
+  <canvas id="c512" width="512" height="512"></canvas>
+</div>
+<div class="row">
+  <button onclick="dl(192)">📥 icon-192.png をダウンロード</button>
+  <button onclick="dl(512)">📥 icon-512.png をダウンロード</button>
+  <button onclick="dlFeature()">📥 feature-1024x500.png（ストア用）</button>
+</div>
+
+<canvas id="cFeat" width="1024" height="500" style="width:512px;height:250px"></canvas>
+
+<script>
+function drawIcon(ctx, size) {
+  // 背景グラデ
+  const g = ctx.createRadialGradient(size/2, size*0.4, 0, size/2, size/2, size*0.7);
+  g.addColorStop(0, '#1a3a6e');
+  g.addColorStop(1, '#0a0a14');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, size, size);
+
+  // 3レーンライン
+  ctx.strokeStyle = 'rgba(76,201,240,0.3)';
+  ctx.lineWidth = size * 0.005;
+  for (let i=1; i<3; i++) {
+    ctx.beginPath();
+    ctx.moveTo(size*i/3, size*0.1);
+    ctx.lineTo(size*i/3, size*0.9);
+    ctx.stroke();
+  }
+
+  // ボール3個（上部）
+  const balls = [
+    { x: size*0.18, y: size*0.30, r: size*0.085, c: '#ff6b6b' },
+    { x: size*0.50, y: size*0.20, r: size*0.10,  c: '#feca57' },
+    { x: size*0.82, y: size*0.32, r: size*0.075, c: '#1dd1a1' },
+  ];
+  for (const b of balls) {
+    const grad = ctx.createRadialGradient(b.x - b.r/3, b.y - b.r/3, 1, b.x, b.y, b.r);
+    grad.addColorStop(0, '#fff');
+    grad.addColorStop(0.3, b.c);
+    grad.addColorStop(1, '#000');
+    ctx.fillStyle = grad;
+    ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI*2); ctx.fill();
+    // 顔
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(b.x - b.r*0.3, b.y - b.r*0.05, b.r*0.18, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(b.x + b.r*0.3, b.y - b.r*0.05, b.r*0.18, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#000';
+    ctx.beginPath(); ctx.arc(b.x - b.r*0.3, b.y - b.r*0.05, b.r*0.09, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(b.x + b.r*0.3, b.y - b.r*0.05, b.r*0.09, 0, Math.PI*2); ctx.fill();
+  }
+
+  // プレイヤー（戦闘機）下部中央
+  const px = size/2, py = size*0.78;
+  const ps = size*0.1;
+  ctx.fillStyle = 'rgba(0,0,0,0.4)';
+  ctx.beginPath();
+  ctx.ellipse(px, py + ps*0.7, ps*0.7, ps*0.2, 0, 0, Math.PI*2);
+  ctx.fill();
+  ctx.fillStyle = '#4cc9f0';
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = size*0.007;
+  ctx.beginPath();
+  ctx.moveTo(px, py - ps);
+  ctx.lineTo(px + ps*0.85, py + ps*0.6);
+  ctx.lineTo(px, py + ps*0.3);
+  ctx.lineTo(px - ps*0.85, py + ps*0.6);
+  ctx.closePath();
+  ctx.fill(); ctx.stroke();
+  // コア
+  ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.arc(px, py, ps*0.18, 0, Math.PI*2); ctx.fill();
+
+  // 弾
+  ctx.fillStyle = '#4cc9f0';
+  for (let i=0; i<3; i++) {
+    const by = py - ps*1.3 - i*size*0.06;
+    ctx.beginPath();
+    ctx.arc(px, by, size*0.018, 0, Math.PI*2);
+    ctx.fill();
+  }
+}
+
+function drawFeature(ctx) {
+  // 1024x500
+  const g = ctx.createLinearGradient(0, 0, 1024, 500);
+  g.addColorStop(0, '#0a0a14');
+  g.addColorStop(0.5, '#1a3a6e');
+  g.addColorStop(1, '#0a0a14');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 1024, 500);
+
+  // タイトル
+  ctx.font = 'bold 88px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.lineWidth = 12;
+  ctx.strokeStyle = '#000';
+  ctx.strokeText('BALL PIT SURVIVOR', 512, 200);
+  ctx.fillStyle = '#4cc9f0';
+  ctx.shadowColor = '#4cc9f0';
+  ctx.shadowBlur = 30;
+  ctx.fillText('BALL PIT SURVIVOR', 512, 200);
+  ctx.shadowBlur = 0;
+
+  // サブタイトル
+  ctx.font = 'bold 32px sans-serif';
+  ctx.fillStyle = '#feca57';
+  ctx.fillText('🎯 3レーン縦型サバイバル', 512, 270);
+
+  // タグ
+  ctx.font = 'bold 24px sans-serif';
+  ctx.fillStyle = '#fff';
+  ctx.fillText('武器11種＋進化11種・ローグライク装備・5分耐久', 512, 330);
+
+  // 装飾ボール
+  const ballPos = [
+    { x:120, y:380, r:50, c:'#ff6b6b' },
+    { x:250, y:420, r:35, c:'#feca57' },
+    { x:880, y:380, r:50, c:'#1dd1a1' },
+    { x:780, y:430, r:30, c:'#a29bfe' },
+  ];
+  for (const b of ballPos) {
+    const gr = ctx.createRadialGradient(b.x-b.r/3, b.y-b.r/3, 1, b.x, b.y, b.r);
+    gr.addColorStop(0, '#fff'); gr.addColorStop(0.3, b.c); gr.addColorStop(1, '#000');
+    ctx.fillStyle = gr;
+    ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI*2); ctx.fill();
+  }
+}
+
+drawIcon(document.getElementById('c192').getContext('2d'), 192);
+drawIcon(document.getElementById('c512').getContext('2d'), 512);
+drawFeature(document.getElementById('cFeat').getContext('2d'));
+
+function dl(size) {
+  const c = document.getElementById('c'+size);
+  const a = document.createElement('a');
+  a.download = 'icon-' + size + '.png';
+  a.href = c.toDataURL('image/png');
+  a.click();
+}
+function dlFeature() {
+  const c = document.getElementById('cFeat');
+  const a = document.createElement('a');
+  a.download = 'feature-1024x500.png';
+  a.href = c.toDataURL('image/png');
+  a.click();
+}
+</script>
+</body>
+</html>

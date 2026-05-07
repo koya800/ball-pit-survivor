@@ -1,0 +1,17 @@
+# OS
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# Editor
+.vscode/
+.idea/
+
+# PWABuilder / Bubblewrap 出力（手元生成物）
+*.aab
+*.apk
+*.keystore
+signing-key-info.txt
+
+# Local
+*.log

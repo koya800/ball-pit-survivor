@@ -1,0 +1,2561 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Ball Pit Survivor">
+<meta name="theme-color" content="#0a0a14">
+<meta name="description" content="3レーン縦型ヴァンサバ風サバイバルシューター">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.svg">
+<title>Ball Pit Survivor</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body {
+    width:100%; height:100%; overflow:hidden;
+    background:#0a0a14; color:#fff;
+    font-family:'Hiragino Sans','Meiryo',sans-serif;
+    user-select:none; -webkit-user-select:none;
+    touch-action:none;
+  }
+  #wrap {
+    position:relative; width:100vw; height:100vh;
+    display:flex; align-items:center; justify-content:center;
+    background: radial-gradient(ellipse at top, #1a1a2e, #0a0a14);
+  }
+  #game {
+    display:block;
+    background: linear-gradient(180deg, #0d1b2a 0%, #1b263b 50%, #0d1b2a 100%);
+    box-shadow: 0 0 40px rgba(0,200,255,0.2);
+    touch-action:none;
+  }
+  #hud {
+    position:absolute; top:0; left:0; right:0;
+    padding:8px 12px;
+    display:flex; justify-content:space-between; align-items:center;
+    pointer-events:none;
+    font-size:12px; font-weight:bold;
+    text-shadow:0 0 4px #000;
+    gap:4px; flex-wrap:wrap;
+  }
+  #hud .stat { background:rgba(0,0,0,0.5); padding:4px 8px; border-radius:8px; }
+  #hud .stat.goal { background:rgba(0,0,0,0.55); border:1px solid #ffd166; color:#ffd166; }
+  #hud .stat.gold { background:rgba(0,0,0,0.55); border:1px solid #ffd166; color:#ffd166; }
+  #hpbar-wrap, #xpbar-wrap {
+    position:absolute; left:12px; right:12px; height:8px;
+    background:rgba(0,0,0,0.5); border-radius:4px; overflow:hidden;
+    pointer-events:none;
+  }
+  #hpbar-wrap { top:36px; }
+  #xpbar-wrap { top:50px; height:6px; }
+  #hpbar { height:100%; background:linear-gradient(90deg,#ff4757,#ff6b81); width:100%; transition:width .2s; }
+  #xpbar { height:100%; background:linear-gradient(90deg,#2ed573,#7bed9f); width:0%; transition:width .15s; }
+
+  #quit-btn {
+    position:absolute; right:10px; bottom:14px;
+    background:rgba(0,0,0,0.6); border:2px solid rgba(255,107,107,0.7);
+    color:#ff6b6b; padding:6px 14px; border-radius:8px;
+    font-size:12px; font-weight:bold; cursor:pointer;
+    z-index:8; display:none;
+  }
+  #quit-btn:active { transform:scale(0.95); }
+  #quit-btn.show { display:block; }
+
+  #weapon-bar {
+    position:absolute; left:8px; bottom:12px;
+    display:flex; flex-direction:column; gap:4px;
+    pointer-events:none; z-index:5;
+  }
+  .wslot {
+    width:34px; height:34px; border-radius:8px;
+    background:rgba(0,0,0,0.55); border:2px solid rgba(76,201,240,0.5);
+    display:flex; align-items:center; justify-content:center;
+    font-size:17px; position:relative;
+  }
+  .wslot.evolved { border-color:#ffd166; box-shadow:0 0 8px rgba(255,209,102,0.5); }
+  .wslot .lvl {
+    position:absolute; bottom:-3px; right:-3px;
+    background:#4cc9f0; color:#001;
+    font-size:9px; font-weight:bold;
+    border-radius:5px; padding:0 3px;
+  }
+  .wslot.evolved .lvl { background:#ffd166; color:#000; }
+
+  #overlay {
+    position:absolute; inset:0;
+    display:none; align-items:center; justify-content:center;
+    background:rgba(0,0,0,0.78); backdrop-filter:blur(4px);
+    z-index:10; padding:14px;
+  }
+  #overlay.show { display:flex; }
+  .panel {
+    background:linear-gradient(180deg,#1e2a44,#131c30);
+    border:2px solid #4cc9f0; border-radius:14px;
+    padding:16px; max-width:380px; width:100%;
+    text-align:center; box-shadow:0 0 30px rgba(76,201,240,0.4);
+    max-height:calc(100vh - 28px); overflow-y:auto;
+  }
+  .panel h2 { font-size:20px; margin-bottom:8px; color:#4cc9f0; }
+  .panel h3 { font-size:14px; margin:8px 0; color:#feca57; }
+  .panel p { font-size:12px; line-height:1.5; margin-bottom:10px; opacity:.9; }
+  .upgrade-btn {
+    display:block; width:100%;
+    background:linear-gradient(180deg,#2a3f5f,#1a2a45);
+    border:2px solid #4cc9f0; color:#fff;
+    padding:9px; margin:5px 0; border-radius:8px;
+    font-size:13px; font-weight:bold; text-align:left;
+    cursor:pointer; transition:transform .1s;
+  }
+  .upgrade-btn:active { transform:scale(0.97); background:#4cc9f0; color:#001; }
+  .upgrade-btn .desc { display:block; font-size:11px; opacity:.7; margin-top:2px; font-weight:normal; }
+  .upgrade-btn.new { border-color:#feca57; }
+  .upgrade-btn.evo {
+    border-color:#ffd166;
+    background:linear-gradient(180deg,#4a3a1a,#2a1f10);
+    box-shadow:0 0 12px rgba(255,209,102,0.5);
+  }
+  .upgrade-btn.evo .desc { color:#ffd166; opacity:1; }
+
+  .start-btn {
+    background:linear-gradient(180deg,#4cc9f0,#3a86ff);
+    border:none; color:#fff;
+    padding:12px 28px; font-size:16px; font-weight:bold;
+    border-radius:10px; cursor:pointer;
+    box-shadow:0 4px 14px rgba(76,201,240,0.5);
+    margin:6px 4px;
+  }
+  .start-btn:active { transform:scale(0.96); }
+  .shop-btn {
+    background:linear-gradient(180deg,#feca57,#f59e0b);
+    color:#000;
+  }
+
+  .shop-row {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:8px 10px;
+    background:rgba(0,0,0,0.3); border:1px solid rgba(255,209,102,0.3);
+    border-radius:8px; margin:5px 0;
+    text-align:left; font-size:12px;
+  }
+  .shop-row.maxed { opacity:.55; }
+  .shop-row .name { color:#ffd166; font-weight:bold; flex:1; }
+  .shop-row .lvl { color:#fff; min-width:50px; text-align:right; margin-right:6px; font-size:11px; }
+  .shop-row button {
+    background:#4cc9f0; color:#000; border:none;
+    padding:6px 10px; border-radius:6px;
+    font-weight:bold; font-size:11px; cursor:pointer;
+  }
+  .shop-row button:disabled { opacity:.4; cursor:default; background:#666; }
+  .shop-row .desc { display:block; font-size:10px; opacity:.7; margin-top:2px; font-weight:normal; color:#fff; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="game"></canvas>
+
+  <div id="hud">
+    <div class="stat">Lv.<span id="lvl">1</span></div>
+    <div class="stat goal">⏱ <span id="time">0</span>/300</div>
+    <div class="stat">💀 <span id="kills">0</span></div>
+    <div class="stat gold">💰 <span id="gold">0</span></div>
+  </div>
+  <div id="hpbar-wrap"><div id="hpbar"></div></div>
+  <div id="xpbar-wrap"><div id="xpbar"></div></div>
+
+  <div id="weapon-bar"></div>
+  <button id="quit-btn">✕ 中断</button>
+
+  <div id="overlay" class="show">
+    <div class="panel" id="panel"></div>
+  </div>
+</div>
+
+<script>
+//==================================================
+// Ball Pit Survivor — Coins & Shop & Evolution
+//==================================================
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+
+let W=0, H=0, LANE_W=0;
+function resize() {
+  const maxW = Math.min(window.innerWidth, 480);
+  let w = maxW;
+  let h = Math.min(window.innerHeight, w * 16/9);
+  if (h < window.innerHeight && w * (window.innerHeight/h) <= window.innerWidth) {
+    h = window.innerHeight; w = Math.min(maxW, h * 9/16);
+  }
+  canvas.width = w; canvas.height = h;
+  canvas.style.width = w+'px'; canvas.style.height = h+'px';
+  W = w; H = h; LANE_W = W/3;
+}
+window.addEventListener('resize', resize); resize();
+
+const PLAYER_Y_RATIO = 0.78;
+const PLAYER_SIZE = 28;
+const CLEAR_TIME = 300;  // 5分
+const MAX_WLVL = 8;
+const EVOLVE_LVL = 5;     // 武器進化に必要なレベル
+const MERGE_START = 30;   // 合体開始までの秒数
+const GROUND_Y_RATIO = 0.92;  // コインがバウンドする地面
+
+// ---- Audio (synth) ----
+let audioCtx = null;
+function initAudio(){ try{ if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)(); if(audioCtx.state==='suspended') audioCtx.resume(); }catch(e){} }
+function tone(freq, dur=0.08, type='square', vol=0.05, slide=0) {
+  if (!audioCtx) return;
+  const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+  o.type=type; o.frequency.setValueAtTime(freq, audioCtx.currentTime);
+  if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(40, freq+slide), audioCtx.currentTime+dur);
+  g.gain.setValueAtTime(vol, audioCtx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime+dur);
+  o.connect(g).connect(audioCtx.destination); o.start(); o.stop(audioCtx.currentTime+dur);
+}
+function noise(dur=0.08, vol=0.06, freq=400) {
+  if (!audioCtx) return;
+  const sr=audioCtx.sampleRate, buf=audioCtx.createBuffer(1, sr*dur, sr), data=buf.getChannelData(0);
+  for (let i=0; i<data.length; i++) data[i] = (Math.random()*2-1) * (1 - i/data.length);
+  const src=audioCtx.createBufferSource(); src.buffer=buf;
+  const filt=audioCtx.createBiquadFilter(); filt.type='bandpass'; filt.frequency.value=freq;
+  const g=audioCtx.createGain();
+  g.gain.setValueAtTime(vol, audioCtx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime+dur);
+  src.connect(filt).connect(g).connect(audioCtx.destination); src.start();
+}
+// レート制限：同時鳴り過ぎを防ぐ
+const sfxLast = {};
+function rl(name, ms) { const n = performance.now(); if ((sfxLast[name]||0) > n - ms) return false; sfxLast[name]=n; return true; }
+const SFX = {
+  shoot: () => { if (rl('shoot',55)) tone(900, 0.04, 'square', 0.018, -200); },
+  hit:   () => { if (rl('hit',40)) noise(0.04, 0.03, 1500); },
+  kill:  (e) => {
+    if (!rl('kill',30)) return;
+    if (e && e.merged) { tone(120, 0.25, 'sawtooth', 0.06, -60); noise(0.15, 0.05, 300); }
+    else if (e && e.bonus) { tone(880, 0.05, 'square', 0.05); setTimeout(()=>tone(1320, 0.08, 'square', 0.05), 60); setTimeout(()=>tone(1760, 0.12, 'square', 0.05), 130); }
+    else tone(180, 0.10, 'sawtooth', 0.04, -100);
+  },
+  coin: () => { if (rl('coin',40)) { tone(1400, 0.04, 'sine', 0.05, 200); setTimeout(()=>tone(1800, 0.05, 'sine', 0.04, 300), 35); } },
+  pickup:() => { if (rl('pickup',30)) tone(1200, 0.04, 'sine', 0.03, 400); },
+  hurt:  () => tone(220, 0.18, 'sawtooth', 0.07, -160),
+  levelup:() => { tone(523, 0.08, 'square', 0.05); setTimeout(()=>tone(659, 0.08, 'square', 0.05), 80); setTimeout(()=>tone(784, 0.16, 'square', 0.06), 160); setTimeout(()=>tone(1047, 0.2, 'square', 0.06), 240); },
+  evolve:() => { tone(440, 0.1, 'sawtooth', 0.06); setTimeout(()=>tone(660, 0.1, 'sawtooth', 0.06), 100); setTimeout(()=>tone(880, 0.15, 'sawtooth', 0.07), 200); setTimeout(()=>noise(0.2, 0.05, 1200), 300); },
+  laser: () => tone(1200, 0.18, 'sawtooth', 0.04, -800),
+  shock: () => noise(0.12, 0.05, 600),
+  mine:  () => { noise(0.18, 0.06, 250); tone(80, 0.2, 'sawtooth', 0.07, -30); },
+  merge: () => { tone(180, 0.4, 'sawtooth', 0.06, -50); setTimeout(()=>tone(120, 0.3, 'sawtooth', 0.05), 100); },
+  freeze:() => { if (rl('freeze',60)) tone(1800, 0.06, 'sine', 0.03, -800); },
+  gameover:() => { tone(440, 0.2, 'sawtooth', 0.06, -200); setTimeout(()=>tone(330, 0.2, 'sawtooth', 0.06, -150), 200); setTimeout(()=>tone(220, 0.4, 'sawtooth', 0.06, -100), 400); },
+  victory:() => { for (let i=0; i<6; i++) setTimeout(()=>tone(523*Math.pow(1.2,i), 0.1, 'square', 0.05), i*80); setTimeout(()=>tone(2093, 0.4, 'square', 0.06), 480); },
+  bossSpawn: () => { if (!audioCtx) return; const t = audioCtx.currentTime; const o = audioCtx.createOscillator(); o.type='sawtooth'; o.frequency.setValueAtTime(220,t); o.frequency.exponentialRampToValueAtTime(50,t+0.7); const g=audioCtx.createGain(); g.gain.setValueAtTime(0.09,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.8); o.connect(g).connect(audioCtx.destination); o.start(t); o.stop(t+0.8); noise(0.4, 0.05, 200); },
+  bossKill: () => { noise(0.3, 0.08, 200); for (let i=0; i<5; i++) setTimeout(()=>tone(330*Math.pow(1.18,i), 0.12, 'square', 0.06), i*60); setTimeout(()=>noise(0.4, 0.06, 800), 280); },
+  equipDrop: () => { [880, 1108, 1318].forEach((f,i) => setTimeout(()=>tone(f, 0.4, 'sine', 0.04, 0), i*70)); },
+  equipPickup: () => { tone(660, 0.05, 'sine', 0.04); setTimeout(()=>tone(880, 0.06, 'sine', 0.04), 40); setTimeout(()=>tone(1320, 0.12, 'sine', 0.045), 90); },
+  shopBuy: () => { tone(659, 0.06, 'sine', 0.05); setTimeout(()=>tone(988, 0.08, 'sine', 0.05), 60); setTimeout(()=>tone(1318, 0.15, 'sine', 0.05), 130); },
+  equipChange: () => { tone(523, 0.06, 'square', 0.04); setTimeout(()=>tone(784, 0.1, 'square', 0.04), 50); },
+  gameStart: () => { tone(220, 0.2, 'sawtooth', 0.05, 600); setTimeout(()=>tone(440, 0.15, 'square', 0.05), 150); setTimeout(()=>tone(880, 0.1, 'square', 0.05), 280); },
+};
+
+// ---- BGM (シンセループ) ----
+let bgmTimer = null;
+let bgmStep = 0;
+let bgmVol = 0.6;  // 全体音量
+let bgmEnabled = true;
+// メイン進行: I-V-vi-IV (C-G-Am-F) を 16 ステップ
+const BGM_BASS = [130.81, 130.81, 196.00, 196.00, 220.00, 220.00, 174.61, 174.61];
+const BGM_MEL  = [523.25, 659.25, 783.99, 659.25, 587.33, 698.46, 523.25, 698.46];
+function bgmNote(freq, dur, type, vol) {
+  if (!audioCtx || !bgmEnabled) return;
+  const t = audioCtx.currentTime;
+  const o = audioCtx.createOscillator();
+  o.type = type;
+  o.frequency.value = freq;
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(vol*bgmVol, t+0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001, t+dur);
+  o.connect(g).connect(audioCtx.destination);
+  o.start(t); o.stop(t+dur);
+}
+function bgmKick() {
+  if (!audioCtx || !bgmEnabled) return;
+  const t = audioCtx.currentTime;
+  const o = audioCtx.createOscillator();
+  o.type = 'sine';
+  o.frequency.setValueAtTime(120, t);
+  o.frequency.exponentialRampToValueAtTime(40, t+0.1);
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(0.06*bgmVol, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t+0.15);
+  o.connect(g).connect(audioCtx.destination);
+  o.start(t); o.stop(t+0.15);
+}
+function bgmHat() {
+  if (!audioCtx || !bgmEnabled) return;
+  const sr = audioCtx.sampleRate;
+  const buf = audioCtx.createBuffer(1, sr*0.05, sr);
+  const data = buf.getChannelData(0);
+  for (let i=0; i<data.length; i++) data[i] = (Math.random()*2-1) * (1 - i/data.length);
+  const src = audioCtx.createBufferSource();
+  src.buffer = buf;
+  const filt = audioCtx.createBiquadFilter();
+  filt.type = 'highpass'; filt.frequency.value = 4000;
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(0.025*bgmVol, audioCtx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime+0.05);
+  src.connect(filt).connect(g).connect(audioCtx.destination);
+  src.start();
+}
+function startBGM() {
+  if (!audioCtx) return;
+  if (bgmTimer) return;
+  bgmStep = 0;
+  bgmTimer = setInterval(() => {
+    if (!bgmEnabled) return;
+    const step = bgmStep % 16;       // 0-15 = 16 step
+    const beat = step % 4;           // ビート内での位置
+    const idx = Math.floor(step / 2) % 8;  // ベース/メロディの位置（8拍）
+    // ベース（半拍ごと）
+    bgmNote(BGM_BASS[idx], 0.25, 'triangle', 0.05);
+    // キック（1拍目, 3拍目）
+    if (beat === 0 || beat === 2) bgmKick();
+    // ハイハット（裏拍）
+    if (beat === 1 || beat === 3) bgmHat();
+    // メロディ（4ステップ毎）
+    if (step % 4 === 0) bgmNote(BGM_MEL[idx], 0.4, 'square', 0.018);
+    if (step % 8 === 4) bgmNote(BGM_MEL[idx]*1.5, 0.35, 'square', 0.014);
+    bgmStep++;
+  }, 200);  // 1ステップ200ms = 75BPMくらい
+}
+function stopBGM() {
+  if (bgmTimer) clearInterval(bgmTimer);
+  bgmTimer = null;
+}
+function toggleBGM() {
+  bgmEnabled = !bgmEnabled;
+  try { localStorage.setItem('bps_bgm', bgmEnabled ? '1' : '0'); } catch(e){}
+}
+// 起動時にロード
+try { bgmEnabled = localStorage.getItem('bps_bgm') !== '0'; } catch(e){}
+
+// ---- Meta (永続強化) ----
+const META_KEY = 'bps_meta_v1';
+function loadMeta() {
+  try {
+    const d = JSON.parse(localStorage.getItem(META_KEY) || '{}');
+    return {
+      gold: d.gold|0,
+      ups: d.ups || {},
+      inventory: d.inventory || [],
+      equipped: d.equipped || { weapon:null, armor:null, accessory:null },
+    };
+  } catch(e) {
+    return { gold:0, ups:{}, inventory:[], equipped:{ weapon:null, armor:null, accessory:null } };
+  }
+}
+let saveOk = true;
+function saveMeta() {
+  try {
+    localStorage.setItem(META_KEY, JSON.stringify({
+      gold: state.gold,
+      ups: state.ups,
+      inventory: state.inventory,
+      equipped: state.equipped,
+    }));
+    saveOk = true;
+  } catch(e){ saveOk = false; }
+}
+function resetMeta() {
+  try { localStorage.removeItem(META_KEY); } catch(e){}
+  state.gold = 0;
+  state.ups = {};
+  state.inventory = [];
+  state.equipped = { weapon:null, armor:null, accessory:null };
+}
+
+// ---- Stages ----
+const STAGES = {
+  plains:  { name:'草原',     icon:'🌿', bg:'linear-gradient(180deg, #2d4263 0%, #3e5a8a 50%, #2d4263 100%)', accent:'rgba(76,201,240,', hpMul:1.0,  spMul:1.0,  goldMul:1.0, xpMul:1.0 },
+  night:   { name:'夜の街',   icon:'🌙', bg:'linear-gradient(180deg, #0d1b2a 0%, #1b263b 50%, #0d1b2a 100%)', accent:'rgba(58,134,255,',  hpMul:1.15, spMul:1.0,  goldMul:1.2, xpMul:1.2 },
+  volcano: { name:'火山',     icon:'🌋', bg:'linear-gradient(180deg, #3a0e0e 0%, #6e1f1f 50%, #3a0e0e 100%)', accent:'rgba(255,71,87,',  hpMul:1.30, spMul:1.10, goldMul:1.4, xpMul:1.4 },
+  ice:     { name:'氷雪',     icon:'❄', bg:'linear-gradient(180deg, #1a3344 0%, #2c5a78 50%, #1a3344 100%)', accent:'rgba(116,196,255,', hpMul:1.50, spMul:0.85, goldMul:1.6, xpMul:1.5 },
+  space:   { name:'宇宙',     icon:'🌌', bg:'linear-gradient(180deg, #06051f 0%, #1a0a3d 50%, #06051f 100%)', accent:'rgba(168,85,247,',  hpMul:1.80, spMul:1.20, goldMul:2.0, xpMul:1.8 },
+};
+const STAGE_ORDER = ['plains','night','volcano','ice','space'];
+function applyStageBg() {
+  const s = STAGES[state.stage] || STAGES.plains;
+  canvas.style.background = s.bg;
+}
+
+const SHOP_DEFS = {
+  hp:    { name:'❤ 開始HP+20',      desc:'ゲーム開始時の最大HPが増加',      max:5, baseCost:40,  step:1.8 },
+  atk:   { name:'⚔ 開始攻撃+10%',   desc:'ゲーム開始時の攻撃倍率UP',        max:5, baseCost:50,  step:1.8 },
+  fire:  { name:'🔥 開始連射+8%',   desc:'ゲーム開始時の発射速度UP',        max:5, baseCost:50,  step:1.8 },
+  coin:  { name:'💰 コイン獲得+25%',desc:'敵から落ちるコイン量UP',          max:5, baseCost:30,  step:1.8 },
+  xp:    { name:'📚 EXP獲得+20%',  desc:'XPオーブから得られる経験値UP',     max:5, baseCost:40,  step:1.8 },
+  range: { name:'🧲 取得範囲+30%', desc:'XPやコインの吸引範囲UP',          max:3, baseCost:80,  step:2.0 },
+  speed: { name:'💨 弾速+10%',     desc:'発射時の初期弾速UP',              max:3, baseCost:60,  step:2.0 },
+  crit:  { name:'✨ クリ率+3%',    desc:'クリティカル発生率UP',            max:3, baseCost:80,  step:2.0 },
+};
+function shopCost(key, lvl) {
+  const d = SHOP_DEFS[key];
+  return Math.ceil(d.baseCost * Math.pow(d.step||2, lvl));
+}
+
+// ---- State ----
+const state = {
+  running:false, paused:false, cleared:false,
+  time:0, lastSpawn:0, spawnInterval:1.4,
+  bonusSpawnT:18,  // 最初のボーナスまで18秒
+  kills:0,
+  gold:0,           // 永続ゴールド
+  ups:{},           // 永続強化レベル
+  player:null,
+  enemies:[], bullets:[], enemyBullets:[], particles:[], xpOrbs:[], coins:[],
+  shockwaves:[], lasers:[], mines:[], drones:[], firewalls:[], equipDrops:[],
+  level:1, xp:0, xpToNext:5,
+};
+
+// 起動時にロード
+{
+  const m = loadMeta();
+  state.gold = m.gold;
+  state.ups = m.ups;
+  state.inventory = m.inventory;
+  state.equipped = m.equipped;
+}
+
+// ---- Player ----
+function createPlayer() {
+  const u = state.ups;
+  // 基礎値は控えめ。永続強化を買い揃えてやっとクリア圏内になる調整。
+  const baseHp = 80 + 20*(u.hp||0);
+  return {
+    lane:1, targetLane:1,
+    x:LANE_W*1.5, y:H*PLAYER_Y_RATIO,
+    hp:baseHp, maxHp:baseHp, regen:0,
+    atkMul: 0.85 * (1 + 0.10*(u.atk||0)),
+    fireRateMul: 0.9 * (1 + 0.08*(u.fire||0)),
+    bulletSpeedMul: 1 * (1 + 0.10*(u.speed||0)),
+    pierce:0, multishot:1, bulletSize:1,
+    moveSpeed:16,
+    pickupRange: 80 * (1 + 0.30*(u.range||0)),
+    crit: 0.03 + 0.03*(u.crit||0), critMul:1.8,
+    xpMul: 1 * (1 + 0.20*(u.xp||0)),
+    coinMul: 1 + 0.25*(u.coin||0),
+    invul:0,
+    weapons:{ bolt:{lvl:1, cd:0, evo:false} },
+    passivesOwned:new Set(),
+  };
+}
+function applyEquippedToPlayer(p) {
+  for (const slot of EQUIP_SLOTS) {
+    const eq = state.equipped && state.equipped[slot];
+    if (eq) equipApply(p, eq);
+  }
+}
+
+// ---- Weapons (11 base + 11 evolutions) — レベル毎の効果を明示 ----
+const WEAPON_DEFS = {
+  // 1. ボルト — 単レーンの瞬間DPS担当
+  bolt: { name:'ボルト', icon:'⚡', maxLvl:MAX_WLVL,
+    intro: '自レーンに前方弾を発射',
+    lvlText: ['','基本: 14ダメージ・1発','攻撃力 +5','マルチショット +1（2発）','攻撃力 +6','連射速度 +20%','マルチショット +1（3発）','攻撃力 +8','連射速度 +25%'],
+    update: (p, w, dt) => {
+      const lvl = w.lvl;
+      const intMul = lvl>=8 ? 0.60 : lvl>=5 ? 0.78 : 1.0;
+      const interval = (0.85*intMul) / p.fireRateMul;
+      w.cd -= dt;
+      if (w.cd <= 0) {
+        w.cd = interval;
+        const ms = (p.multishot - 1) + (lvl>=6 ? 3 : lvl>=3 ? 2 : 1);
+        const dmg = Math.ceil((14 + (lvl>=2?5:0) + (lvl>=4?6:0) + (lvl>=7?8:0)) * p.atkMul);
+        const offsets = ms<=1?[0]:ms===2?[-10,10]:ms===3?[-16,0,16]:[-22,-8,8,22];
+        for (const off of offsets) {
+          state.bullets.push({ x:p.x+off, y:p.y-PLAYER_SIZE, vx:0, vy:-600*p.bulletSpeedMul, r:6*p.bulletSize, dmg, pierce:p.pierce, lane:p.lane, color:'#4cc9f0' });
+        }
+        SFX.shoot();
+      }
+    }
+  },
+  storm: { name:'ストーム', icon:'⚡⚡', maxLvl:MAX_WLVL, evolved:true,
+    intro: '3レーン同時に強力な雷',
+    lvlText: ['','進化: 3レーン同時雷','攻撃力 +6','攻撃力 +6','連射速度 +15%','攻撃力 +8','貫通 +1','攻撃力 +10','連射速度 +20%'],
+    update: (p, w, dt) => {
+      const lvl = w.lvl;
+      const intMul = lvl>=8 ? 0.65 : lvl>=4 ? 0.85 : 1.0;
+      const interval = (0.7*intMul) / p.fireRateMul;
+      w.cd -= dt;
+      if (w.cd <= 0) {
+        w.cd = interval;
+        const dmg = Math.ceil((22 + (lvl>=2?6:0) + (lvl>=3?6:0) + (lvl>=5?8:0) + (lvl>=7?10:0)) * p.atkMul);
+        const pi = p.pierce + 1 + (lvl>=6 ? 1 : 0);
+        for (let l=0; l<3; l++) {
+          state.bullets.push({ x:LANE_W*(l+0.5), y:p.y-PLAYER_SIZE, vx:0, vy:-700*p.bulletSpeedMul, r:8*p.bulletSize, dmg, pierce:pi, lane:l, color:'#fff', glow:'#4cc9f0' });
+        }
+      }
+    }
+  },
+  // 2. スプレッド
+  spread: { name:'スプレッド', icon:'🔱', maxLvl:MAX_WLVL,
+    intro: '前方に拡散弾',
+    lvlText: ['','基本: 3方向 9ダメージ','攻撃力 +3','攻撃力 +4','拡散数 +2（5方向）','攻撃力 +4','貫通 +1','拡散数 +2（7方向）','攻撃力 +5'],
+    update: (p, w, dt) => {
+      const lvl = w.lvl;
+      w.cd -= dt;
+      const interval = Math.max(0.9, (1.4 - (lvl-1)*0.04)) / p.fireRateMul;
+      if (w.cd <= 0) {
+        w.cd = interval;
+        const dmg = Math.ceil((9 + (lvl>=2?3:0) + (lvl>=3?4:0) + (lvl>=5?4:0) + (lvl>=8?5:0)) * p.atkMul);
+        const speed = 480*p.bulletSpeedMul;
+        let angles;
+        if (lvl >= 7) angles = [-0.6,-0.4,-0.2,0,0.2,0.4,0.6];
+        else if (lvl >= 4) angles = [-0.5,-0.25,0,0.25,0.5];
+        else angles = [-0.4,0,0.4];
+        const pi = p.pierce + 1 + (lvl>=6 ? 1 : 0);
+        for (const a of angles) {
+          state.bullets.push({ x:p.x, y:p.y-PLAYER_SIZE, vx:Math.sin(a)*speed, vy:-Math.cos(a)*speed, r:5*p.bulletSize, dmg, pierce:pi, lane:-1, color:'#feca57' });
+        }
+      }
+    }
+  },
+  tempest: { name:'テンペスト', icon:'🌪', maxLvl:MAX_WLVL, evolved:true,
+    intro: '全方位8方向の弾幕',
+    lvlText: ['','進化: 8方向弾幕','攻撃力 +5','攻撃力 +5','弾数 +2（10方向）','攻撃力 +6','連射UP','攻撃力 +8','弾数 +2（12方向）'],
+    update: (p, w, dt) => {
+      const lvl = w.lvl;
+      const intMul = lvl>=6 ? 0.85 : 1.0;
+      w.cd -= dt;
+      const interval = (0.9*intMul) / p.fireRateMul;
+      if (w.cd <= 0) {
+        w.cd = interval;
+        const dmg = Math.ceil((14 + (lvl>=2?5:0) + (lvl>=3?5:0) + (lvl>=5?6:0) + (lvl>=7?8:0)) * p.atkMul);
+        const speed = 520*p.bulletSpeedMul;
+        const n = lvl>=8 ? 12 : lvl>=4 ? 10 : 8;
+        for (let i=0; i<n; i++) {
+          const a = (i/n) * Math.PI * 2;
+          state.bullets.push({ x:p.x, y:p.y, vx:Math.cos(a)*speed, vy:Math.sin(a)*speed, r:6*p.bulletSize, dmg, pierce:p.pierce+1, lane:-1, color:'#feca57', glow:'#fff' });
+        }
+      }
+    }
+  },
+  // 3. レーザー — 単レーン超高ダメージ
+  laser: { name:'レーザー', icon:'🔆', maxLvl:MAX_WLVL,
+    intro: '自レーンを貫く光線',
+    lvlText: ['','基本: 34ダメージ','攻撃力 +12','光線幅 +6','攻撃力 +12','連射速度 +20%','光線幅 +8','攻撃力 +14','攻撃力 +14'],
+    update: (p, w, dt) => {
+      const lvl = w.lvl;
+      const intMul = lvl>=5 ? 0.80 : 1.0;
+      w.cd -= dt;
+      const interval = (2.0*intMul) / p.fireRateMul;
+      if (w.cd <= 0) {
+        w.cd = interval;
+        const width = 14 + (lvl>=3?6:0) + (lvl>=6?8:0);
+        const dmg = Math.ceil((34 + (lvl>=2?12:0) + (lvl>=4?12:0) + (lvl>=7?14:0) + (lvl>=8?14:0)) * p.atkMul);
+        state.lasers.push({ lane:p.lane, life:0.35, dmg, width, color:'#fff', applied:false });
+      }
+    }
+  },
+  plasma: { name:'プラズマランス', icon:'🌟', maxLvl:MAX_WLVL, evolved:true,
+    intro: '全レーン同時の光線',
+    lvlText: ['','進化: 全レーン同時光線','攻撃力 +14','攻撃力 +14','幅 +6','連射速度 +15%','攻撃力 +16','幅 +8','攻撃力 +20'],
+    update: (p, w, dt) => {
+      const lvl = w.lvl;
+      const intMul = lvl>=5 ? 0.85 : 1.0;
+      w.cd -= dt;
+      const interval = (1.8*intMul) / p.fireRateMul;
+      if (w.cd <= 0) {
+        w.cd = interval;
+        const dmg = Math.ceil((42 + (lvl>=2?14:0) + (lvl>=3?14:0) + (lvl>=6?16:0) + (lvl>=8?20:0)) * p.atkMul);
+        const width = 20 + (lvl>=4?6:0) + (lvl>=7?8:0);
+        for (let l=0; l<3; l++) state.lasers.push({ lane:l, life:0.45, dmg, width, color:'#ffd166', applied:false });
+      }
+    }
+  },
+  // 4. ショックウェーブ — 全方位AoE
+  shock: { name:'ショックウェーブ', icon:'💥', maxLvl:MAX_WLVL,
+    intro: '周囲に衝撃波',
+    lvlText: ['','基本: 26ダメージ・半径130','攻撃力 +9','範囲 +30','攻撃力 +9','連射速度 +20%','範囲 +30','攻撃力 +12','攻撃力 +12'],
+    update: (p, w, dt) => {
+      const lvl = w.lvl;
+      const intMul = lvl>=5 ? 0.80 : 1.0;
+      w.cd -= dt;
+      const interval = (2.5*intMul) / p.fireRateMul;
+      if (w.cd <= 0) {
+        w.cd = interval;
+        const dmg = Math.ceil((26 + (lvl>=2?9:0) + (lvl>=4?9:0) + (lvl>=7?12:0) + (lvl>=8?12:0)) * p.atkMul);
+        const maxR = 130 + (lvl>=3?30:0) + (lvl>=6?30:0);
+        state.shockwaves.push({ x:p.x, y:p.y, r:20, maxR, life:0.5, dmg, hit:new Set(), color:'#a29bfe' });
+      }
+    }
+  },
+  volcano: { name:'ボルケーノ', icon:'🌋', maxLvl:MAX_WLVL, evolved:true,
+    intro: '3連発の衝撃波',
+    lvlText: ['','進化: 3連発衝撃波','攻撃力 +10','範囲 +30','攻撃力 +10','連射速度 +15%','範囲 +30','攻撃力 +12','攻撃力 +14'],
+    update: (p, w, dt) => {
+      const lvl = w.lvl;
+      const intMul = lvl>=5 ? 0.85 : 1.0;
+      w.cd -= dt;
+      const interval = (2.2*intMul) / p.fireRateMul;
+      if (w.cd <= 0) {
+        w.cd = interval;
+        const dmg = Math.ceil((26 + (lvl>=2?10:0) + (lvl>=4?10:0) + (lvl>=7?12:0) + (lvl>=8?14:0)) * p.atkMul);
+        const maxR = 130 + (lvl>=3?30:0) + (lvl>=6?30:0);
+        for (let i=0; i<3; i++) {
+          setTimeout(() => {
+            if (!state.player) return;
+            state.shockwaves.push({ x:state.player.x, y:state.player.y, r:20, maxR, life:0.5, dmg, hit:new Set(), color:'#ff7043' });
+          }, i*180);
+        }
+      }
+    }
+  },
+  // 5. ドローン — 周囲を周回し最寄りの敵を狙撃
+  drone: { name:'ドローン', icon:'🛸', maxLvl:MAX_WLVL,
+    intro: '周回ドローンが最寄りの敵を狙撃',
+    lvlText: ['','基本: 1機・14ダメージ・自動狙撃','攻撃力 +5','+1機（2機）','攻撃力 +5','連射速度 +25%','+1機（3機）','攻撃力 +6','+1機（4機）'],
+    update: (p, w, dt) => {
+      const lvl = w.lvl;
+      const want = lvl>=8 ? 4 : lvl>=6 ? 3 : lvl>=3 ? 2 : 1;
+      while (state.drones.length < want) state.drones.push({ angle:Math.random()*Math.PI*2, cd:0, color:'#a29bfe' });
+      while (state.drones.length > want) state.drones.pop();
+      const intMul = lvl>=5 ? 0.75 : 1.0;
+      for (const d of state.drones) {
+        d.color = '#a29bfe';
+        d.angle += dt * 2.5;
+        d.cd -= dt;
+        if (d.cd <= 0) {
+          d.cd = (0.65*intMul) / p.fireRateMul;
+          const dmg = Math.ceil((14 + (lvl>=2?5:0) + (lvl>=4?5:0) + (lvl>=7?6:0)) * p.atkMul);
+          const dx = Math.cos(d.angle)*56, dy = Math.sin(d.angle)*56;
+          // 最寄りの敵を探して狙撃
+          let tgt = null, bd2 = 1e9;
+          for (const e of state.enemies) {
+            const ex = e.x - (p.x+dx), ey = e.y - (p.y+dy);
+            const d2 = ex*ex + ey*ey;
+            if (d2 < bd2) { bd2 = d2; tgt = e; }
+          }
+          let vx, vy;
+          const sp = 420*p.bulletSpeedMul;
+          if (tgt) {
+            const tx = tgt.x - (p.x+dx), ty = tgt.y - (p.y+dy);
+            const tl = Math.sqrt(tx*tx+ty*ty)||1;
+            vx = tx/tl * sp; vy = ty/tl * sp;
+          } else {
+            vx = Math.cos(d.angle)*sp; vy = Math.sin(d.angle)*sp;
+          }
+          state.bullets.push({ x:p.x+dx, y:p.y+dy, vx, vy, r:7*p.bulletSize, dmg, pierce:p.pierce, lane:-1, color:'#a29bfe', glow:'#fff', homing:true, homingSpeed:sp });
+        }
+      }
+    }
+  },
+  guardian: { name:'ガーディアン', icon:'🪐', maxLvl:MAX_WLVL, evolved:true,
+    intro: '追尾するドローン弾',
+    lvlText: ['','進化: 2機の追尾ドローン','攻撃力 +5','+1機（3機）','攻撃力 +5','連射速度 +15%','+1機（4機）','攻撃力 +7','+2機（6機）'],
+    update: (p, w, dt) => {
+      const lvl = w.lvl;
+      const want = lvl>=8 ? 6 : lvl>=6 ? 4 : lvl>=3 ? 3 : 2;
+      while (state.drones.length < want) state.drones.push({ angle:Math.random()*Math.PI*2, cd:0, color:'#ffd166' });
+      while (state.drones.length > want) state.drones.pop();
+      const intMul = lvl>=5 ? 0.85 : 1.0;
+      for (const d of state.drones) {
+        d.color = '#ffd166';
+        d.angle += dt * 2.2;
+        d.cd -= dt;
+        if (d.cd <= 0) {
+          d.cd = (0.45*intMul) / p.fireRateMul;
+          const dx = Math.cos(d.angle)*60, dy = Math.sin(d.angle)*60;
+          let tgt = null, bd2 = 1e9;
+          for (const e of state.enemies) {
+            const ex = e.x - (p.x+dx), ey = e.y - (p.y+dy);
+            const d2 = ex*ex + ey*ey;
+            if (d2 < bd2) { bd2 = d2; tgt = e; }
+          }
+          let vx, vy;
+          const sp = 460*p.bulletSpeedMul;
+          if (tgt) {
+            const tx = tgt.x - (p.x+dx), ty = tgt.y - (p.y+dy);
+            const tl = Math.sqrt(tx*tx+ty*ty)||1;
+            vx = tx/tl * sp; vy = ty/tl * sp;
+          } else {
+            vx = Math.cos(d.angle)*sp; vy = Math.sin(d.angle)*sp;
+          }
+          const dmg = Math.ceil((16 + (lvl>=2?5:0) + (lvl>=4?5:0) + (lvl>=7?7:0)) * p.atkMul);
+          state.bullets.push({ x:p.x+dx, y:p.y+dy, vx, vy, r:8*p.bulletSize, dmg, pierce:p.pierce+1, lane:-1, color:'#ffd166', glow:'#fff', homing:true, homingSpeed:sp });
+        }
+      }
+    }
+  },
+  // 6. マイン
+  mine: { name:'マイン', icon:'⚙', maxLvl:MAX_WLVL,
+    intro: '背後に地雷を設置',
+    lvlText: ['','基本: 30ダメージ・爆風60','爆風範囲 +15','攻撃力 +10','爆風範囲 +15','設置間隔 -20%','攻撃力 +10','爆風範囲 +20','攻撃力 +15'],
+    update: (p, w, dt) => {
+      const lvl = w.lvl;
+      const intMul = lvl>=5 ? 0.80 : 1.0;
+      w.cd -= dt;
+      const interval = (2.0*intMul) / p.fireRateMul;
+      if (w.cd <= 0) {
+        w.cd = interval;
+        const dmg = Math.ceil((30 + (lvl>=3?10:0) + (lvl>=6?10:0) + (lvl>=8?15:0)) * p.atkMul);
+        const blast = 60 + (lvl>=2?15:0) + (lvl>=4?15:0) + (lvl>=7?20:0);
+        state.mines.push({ x:p.x+(Math.random()*40-20), y:p.y-40, r:10+lvl*1.5, life:8, dmg, armed:0.5, blast, chain:0 });
+      }
+    }
+  },
+  hellfire: { name:'ヘルファイア', icon:'💣', maxLvl:MAX_WLVL, evolved:true,
+    intro: '連鎖爆発する地雷',
+    lvlText: ['','進化: 連鎖爆発地雷','爆風 +20','攻撃力 +15','爆風 +20','設置間隔 -15%','攻撃力 +15','連鎖距離UP','攻撃力 +20'],
+    update: (p, w, dt) => {
+      const lvl = w.lvl;
+      const intMul = lvl>=5 ? 0.85 : 1.0;
+      w.cd -= dt;
+      const interval = (1.4*intMul) / p.fireRateMul;
+      if (w.cd <= 0) {
+        w.cd = interval;
+        const dmg = Math.ceil((42 + (lvl>=3?15:0) + (lvl>=6?15:0) + (lvl>=8?20:0)) * p.atkMul);
+        const blast = 90 + (lvl>=2?20:0) + (lvl>=4?20:0);
+        const chain = 2 + (lvl>=7?1:0);
+        state.mines.push({ x:p.x+(Math.random()*40-20), y:p.y-40, r:12+lvl*1.5, life:8, dmg, armed:0.4, blast, chain });
+      }
+    }
+  },
+  // 7. ブーメラン
+  boomerang: { name:'ブーメラン', icon:'🪃', maxLvl:MAX_WLVL,
+    intro: '前方に飛び戻ってくる',
+    lvlText: ['','基本: 11ダメージ・往復','攻撃力 +5','攻撃力 +5','連射速度 +20%','攻撃力 +6','戻り速度UP','攻撃力 +7','攻撃力 +8'],
+    update: (p, w, dt) => {
+      const lvl = w.lvl;
+      const intMul = lvl>=4 ? 0.80 : 1.0;
+      w.cd -= dt;
+      const interval = (1.6*intMul) / p.fireRateMul;
+      if (w.cd <= 0) {
+        w.cd = interval;
+        const dmg = Math.ceil((11 + (lvl>=2?5:0) + (lvl>=3?5:0) + (lvl>=5?6:0) + (lvl>=7?7:0) + (lvl>=8?8:0)) * p.atkMul);
+        const sp = (lvl>=6 ? 540 : 420) * p.bulletSpeedMul;
+        state.bullets.push({ x:p.x, y:p.y-PLAYER_SIZE, vx:0, vy:-sp, r:8*p.bulletSize, dmg, pierce:99, lane:p.lane, color:'#48dbfb', glow:'#fff', boom:true, age:0, returnT:0.7, sp });
+      }
+    }
+  },
+  hurricane: { name:'ハリケーンブレード', icon:'🌬', maxLvl:MAX_WLVL, evolved:true,
+    intro: '4方向に同時に投擲＆戻り',
+    lvlText: ['','進化: 4方向投擲','攻撃力 +7','攻撃力 +7','連射速度 +15%','攻撃力 +9','+2方向（6方向）','攻撃力 +10','攻撃力 +12'],
+    update: (p, w, dt) => {
+      const lvl = w.lvl;
+      const intMul = lvl>=4 ? 0.85 : 1.0;
+      w.cd -= dt;
+      const interval = (1.4*intMul) / p.fireRateMul;
+      if (w.cd <= 0) {
+        w.cd = interval;
+        const dmg = Math.ceil((18 + (lvl>=2?7:0) + (lvl>=3?7:0) + (lvl>=5?9:0) + (lvl>=7?10:0) + (lvl>=8?12:0)) * p.atkMul);
+        const sp = 460*p.bulletSpeedMul;
+        const dirs = lvl>=6 ? [[0,-1],[Math.SQRT1_2,-Math.SQRT1_2],[1,0],[Math.SQRT1_2,Math.SQRT1_2],[0,1],[-1,0]] : [[0,-1],[1,0],[0,1],[-1,0]];
+        for (const [dx,dy] of dirs) {
+          state.bullets.push({ x:p.x, y:p.y, vx:dx*sp, vy:dy*sp, r:9*p.bulletSize, dmg, pierce:99, lane:-1, color:'#48dbfb', glow:'#fff', boom:true, age:0, returnT:0.7, sp });
+        }
+      }
+    }
+  },
+  // 8. ファイアウォール — 持続AoE
+  firewall: { name:'ファイアウォール', icon:'🔥', maxLvl:MAX_WLVL,
+    intro: '自レーン前方に火の壁を設置',
+    lvlText: ['','基本: 5ダメージ・2.2秒','攻撃力 +2','持続時間 +0.4秒','攻撃力 +2','設置間隔 -15%','持続時間 +0.5秒','攻撃力 +3','攻撃力 +3'],
+    update: (p, w, dt) => {
+      const lvl = w.lvl;
+      const intMul = lvl>=5 ? 0.85 : 1.0;
+      w.cd -= dt;
+      const interval = (3.5*intMul) / p.fireRateMul;
+      if (w.cd <= 0) {
+        w.cd = interval;
+        const dmg = Math.ceil((5 + (lvl>=2?2:0) + (lvl>=4?2:0) + (lvl>=7?3:0) + (lvl>=8?3:0)) * p.atkMul);
+        const life = 2.2 + (lvl>=3?0.4:0) + (lvl>=6?0.5:0);
+        state.firewalls.push({ lane:p.lane, y:p.y - 130, life, dmg, tickCd:0, lanes:[p.lane] });
+      }
+    }
+  },
+  inferno: { name:'インフェルノ', icon:'🌋', maxLvl:MAX_WLVL, evolved:true,
+    intro: '3レーン全てに火の壁',
+    lvlText: ['','進化: 3レーン火の壁','攻撃力 +3','持続時間 +0.4秒','攻撃力 +3','設置間隔 -15%','持続時間 +0.5秒','攻撃力 +5','攻撃力 +5'],
+    update: (p, w, dt) => {
+      const lvl = w.lvl;
+      const intMul = lvl>=5 ? 0.85 : 1.0;
+      w.cd -= dt;
+      const interval = (3.0*intMul) / p.fireRateMul;
+      if (w.cd <= 0) {
+        w.cd = interval;
+        const dmg = Math.ceil((10 + (lvl>=2?3:0) + (lvl>=4?3:0) + (lvl>=7?5:0) + (lvl>=8?5:0)) * p.atkMul);
+        const life = 3.0 + (lvl>=3?0.4:0) + (lvl>=6?0.5:0);
+        state.firewalls.push({ lane:-1, y:p.y - 130, life, dmg, tickCd:0, lanes:[0,1,2] });
+      }
+    }
+  },
+  // 9. アイスシャード — 凍結確率が上がる
+  iceshard: { name:'アイスシャード', icon:'❄️', maxLvl:MAX_WLVL,
+    intro: 'スロー＆凍結効果付きの氷弾',
+    lvlText: ['','基本: 凍結15%・スロー1.8秒','攻撃力 +4','凍結率 +15%（30%）','攻撃力 +4','凍結率 +15%（45%）','攻撃力 +5','凍結率 +25%（70%）','凍結率 +25%（95%）'],
+    update: (p, w, dt) => {
+      const lvl = w.lvl;
+      w.cd -= dt;
+      const interval = 1.2 / p.fireRateMul;
+      if (w.cd <= 0) {
+        w.cd = interval;
+        const dmg = Math.ceil((10 + (lvl>=2?4:0) + (lvl>=4?4:0) + (lvl>=6?5:0)) * p.atkMul);
+        const freeze = 0.15 + (lvl>=3?0.15:0) + (lvl>=5?0.15:0) + (lvl>=7?0.25:0) + (lvl>=8?0.25:0);
+        state.bullets.push({ x:p.x, y:p.y-PLAYER_SIZE, vx:0, vy:-540*p.bulletSpeedMul, r:6*p.bulletSize, dmg, pierce:p.pierce+1, lane:p.lane, color:'#48dbfb', glow:'#fff', slow:1.8, freeze });
+      }
+    }
+  },
+  blizzard: { name:'ブリザード', icon:'🧊', maxLvl:MAX_WLVL, evolved:true,
+    intro: '全レーンに氷弾の嵐',
+    lvlText: ['','進化: 凍結50%・全レーン','攻撃力 +5','凍結率 +10%（60%）','攻撃力 +5','凍結率 +15%（75%）','攻撃力 +6','凍結率 +20%（95%）','凍結時間延長'],
+    update: (p, w, dt) => {
+      const lvl = w.lvl;
+      w.cd -= dt;
+      const interval = (1.0 - (lvl-1)*0.05) / p.fireRateMul;
+      if (w.cd <= 0) {
+        w.cd = interval;
+        const dmg = Math.ceil((14 + (lvl>=2?5:0) + (lvl>=4?5:0) + (lvl>=6?6:0)) * p.atkMul);
+        const freeze = 0.50 + (lvl>=3?0.10:0) + (lvl>=5?0.15:0) + (lvl>=7?0.20:0);
+        const slow = lvl>=8 ? 3.0 : 2.0;
+        for (let l=0; l<3; l++) {
+          state.bullets.push({ x:LANE_W*(l+0.5), y:p.y-PLAYER_SIZE, vx:0, vy:-560*p.bulletSpeedMul, r:7*p.bulletSize, dmg, pierce:p.pierce+1, lane:l, color:'#74c4ff', glow:'#fff', slow, freeze });
+        }
+      }
+    }
+  },
+  // 10. 紙飛行機 — 貫通数が大きく増える
+  plane: { name:'紙飛行機', icon:'✈', maxLvl:MAX_WLVL,
+    intro: '多くの敵を貫通する紙飛行機',
+    lvlText: ['','基本: 貫通5・11ダメージ','貫通 +2（7）','攻撃力 +4','貫通 +3（10）','攻撃力 +4','貫通 +5（15）','攻撃力 +5','貫通 +10（25）'],
+    update: (p, w, dt) => {
+      const lvl = w.lvl;
+      w.cd -= dt;
+      const interval = 1.3 / p.fireRateMul;
+      if (w.cd <= 0) {
+        w.cd = interval;
+        const dmg = Math.ceil((11 + (lvl>=3?4:0) + (lvl>=5?4:0) + (lvl>=7?5:0)) * p.atkMul);
+        const pi = 5 + (lvl>=2?2:0) + (lvl>=4?3:0) + (lvl>=6?5:0) + (lvl>=8?10:0) + p.pierce;
+        state.bullets.push({ x:p.x, y:p.y-PLAYER_SIZE, vx:0, vy:-540*p.bulletSpeedMul, r:8*p.bulletSize, dmg, pierce:pi, lane:p.lane, color:'#ffffff', plane:true });
+        SFX.shoot();
+      }
+    }
+  },
+  paperstorm: { name:'ペーパーストーム', icon:'🌪✈', maxLvl:MAX_WLVL, evolved:true,
+    intro: '3レーン全てに貫通紙飛行機',
+    lvlText: ['','進化: 3レーン貫通8','貫通 +3（11）','攻撃力 +6','貫通 +4（15）','攻撃力 +7','貫通 +6（21）','攻撃力 +8','貫通 +12（33）'],
+    update: (p, w, dt) => {
+      const lvl = w.lvl;
+      w.cd -= dt;
+      const interval = 1.0 / p.fireRateMul;
+      if (w.cd <= 0) {
+        w.cd = interval;
+        const dmg = Math.ceil((18 + (lvl>=3?6:0) + (lvl>=5?7:0) + (lvl>=7?8:0)) * p.atkMul);
+        const pi = 8 + (lvl>=2?3:0) + (lvl>=4?4:0) + (lvl>=6?6:0) + (lvl>=8?12:0) + p.pierce;
+        for (let l=0; l<3; l++) {
+          state.bullets.push({ x:LANE_W*(l+0.5), y:p.y-PLAYER_SIZE, vx:0, vy:-580*p.bulletSpeedMul, r:9*p.bulletSize, dmg, pierce:pi, lane:l, color:'#ffffff', glow:'#fff', plane:true });
+        }
+      }
+    }
+  },
+  // 11. みかん — 当たって弾けるAoE弾
+  orange: { name:'みかん', icon:'🍊', maxLvl:MAX_WLVL,
+    intro: '当たると弾けて周囲にもダメージ',
+    lvlText: ['','基本: 直撃9・飛沫7・半径67','爆発範囲 +12','直撃 +3','爆発範囲 +12','飛沫 +4','爆発範囲 +15','直撃 +5','飛沫 +6'],
+    update: (p, w, dt) => {
+      const lvl = w.lvl;
+      w.cd -= dt;
+      const interval = 1.6 / p.fireRateMul;
+      if (w.cd <= 0) {
+        w.cd = interval;
+        const dmg = Math.ceil((9 + (lvl>=3?3:0) + (lvl>=7?5:0)) * p.atkMul);
+        const splashDmg = Math.ceil((7 + (lvl>=5?4:0) + (lvl>=8?6:0)) * p.atkMul);
+        const splashR = 55 + (lvl>=2?12:0) + (lvl>=4?12:0) + (lvl>=6?15:0);
+        state.bullets.push({ x:p.x, y:p.y-PLAYER_SIZE, vx:0, vy:-460*p.bulletSpeedMul, r:9*p.bulletSize, dmg, pierce:0, lane:p.lane, color:'#ff9f43', glow:'#ffce6e', explode:true, splashDmg, splashR });
+        SFX.shoot();
+      }
+    }
+  },
+  bomborange: { name:'ボムオレンジ', icon:'💣🍊', maxLvl:MAX_WLVL, evolved:true,
+    intro: '3レーン同時の大爆発みかん',
+    lvlText: ['','進化: 3レーン大爆発','直撃 +5','飛沫 +5','爆発範囲 +15','直撃 +6','飛沫 +6','爆発範囲 +20','直撃 +8'],
+    update: (p, w, dt) => {
+      const lvl = w.lvl;
+      w.cd -= dt;
+      const interval = 1.6 / p.fireRateMul;
+      if (w.cd <= 0) {
+        w.cd = interval;
+        const dmg = Math.ceil((14 + (lvl>=2?5:0) + (lvl>=5?6:0) + (lvl>=8?8:0)) * p.atkMul);
+        const splashDmg = Math.ceil((12 + (lvl>=3?5:0) + (lvl>=6?6:0)) * p.atkMul);
+        const splashR = 80 + (lvl>=4?15:0) + (lvl>=7?20:0);
+        for (let l=0; l<3; l++) {
+          state.bullets.push({ x:LANE_W*(l+0.5), y:p.y-PLAYER_SIZE, vx:0, vy:-460*p.bulletSpeedMul, r:11*p.bulletSize, dmg, pierce:0, lane:l, color:'#ff6b35', glow:'#ffd166', explode:true, splashDmg, splashR });
+        }
+      }
+    }
+  },
+};
+
+// ---- Evolutions: 武器進化レシピ ----
+const EVOLUTIONS = [
+  { base:'bolt',      req:'fireRate',    result:'storm',     desc:'ボルト + 連射速度' },
+  { base:'spread',    req:'multishot',   result:'tempest',   desc:'スプレッド + マルチショット' },
+  { base:'laser',     req:'bulletSpeed', result:'plasma',    desc:'レーザー + 弾速' },
+  { base:'shock',     req:'attack',      result:'volcano',   desc:'ショックウェーブ + 攻撃力' },
+  { base:'drone',     req:'pickupRange', result:'guardian',  desc:'ドローン + 取得範囲' },
+  { base:'mine',      req:'pierce',      result:'hellfire',  desc:'マイン + 貫通' },
+  { base:'boomerang', req:'multishot',   result:'hurricane', desc:'ブーメラン + マルチショット' },
+  { base:'firewall',  req:'attack',      result:'inferno',   desc:'ファイアウォール + 攻撃力' },
+  { base:'iceshard',  req:'bulletSpeed', result:'blizzard',  desc:'アイスシャード + 弾速' },
+  { base:'plane',     req:'pierce',      result:'paperstorm', desc:'紙飛行機 + 貫通' },
+  { base:'orange',    req:'attack',      result:'bomborange', desc:'みかん + 攻撃力' },
+];
+
+// ---- Passives ----
+const PASSIVES = {
+  attack:      { name:'攻撃力',         icon:'⚔', desc:'弾のダメージ +20%', apply:p=>p.atkMul*=1.2 },
+  fireRate:    { name:'連射速度',       icon:'🔥', desc:'発射間隔 -20%',     apply:p=>p.fireRateMul*=1.25 },
+  bulletSpeed: { name:'弾速',           icon:'💨', desc:'弾速 +20%',         apply:p=>p.bulletSpeedMul*=1.2 },
+  multishot:   { name:'マルチショット', icon:'🎯', desc:'同時発射数 +1',     apply:p=>p.multishot=Math.min(4,p.multishot+1) },
+  pickupRange: { name:'取得範囲',       icon:'🧲', desc:'XP吸引範囲 +50%',   apply:p=>p.pickupRange*=1.5 },
+  maxHp:       { name:'最大HP',         icon:'❤', desc:'+25 / 全回復',      apply:p=>{p.maxHp+=25; p.hp=p.maxHp;} },
+  heal:        { name:'全回復',         icon:'🛡', desc:'HP最大まで回復',    apply:p=>p.hp=p.maxHp },
+  regen:       { name:'再生',           icon:'🌱', desc:'毎秒HP+1.5',        apply:p=>p.regen+=1.5 },
+  moveSpeed:   { name:'移動性能',       icon:'🏃', desc:'レーン移動UP',      apply:p=>p.moveSpeed*=1.3 },
+  pierce:      { name:'貫通',           icon:'🌀', desc:'弾の貫通 +1',       apply:p=>p.pierce+=1 },
+  crit:        { name:'クリティカル率', icon:'✨', desc:'+12%',              apply:p=>p.crit=Math.min(0.7,p.crit+0.12) },
+  critDmg:     { name:'クリ倍率',       icon:'⚡', desc:'+50%',              apply:p=>p.critMul+=0.5 },
+  xp:          { name:'経験値倍率',     icon:'📚', desc:'EXP取得 +25%',      apply:p=>p.xpMul*=1.25 },
+  luck:        { name:'幸運',           icon:'🍀', desc:'装備＆コインドロップ +25%', apply:p=>{p.luckMul=(p.luckMul||1)*1.25; p.coinMul*=1.15;} },
+  vampire:     { name:'吸血',           icon:'🩸', desc:'撃破でHP+1回復',    apply:p=>p.vampire=(p.vampire||0)+1 },
+  dodge:       { name:'回避',           icon:'💨', desc:'被弾回避率 +8%',     apply:p=>p.dodge=Math.min(0.5,(p.dodge||0)+0.08) },
+  cooldown:    { name:'CD短縮',        icon:'⏩', desc:'武器CD -8%',         apply:p=>p.fireRateMul*=1.087 },
+};
+
+// ---- Equipment (ローグライク装備) ----
+const EQUIP_SLOTS = ['weapon', 'armor', 'accessory'];
+const SLOT_LABELS = { weapon:'⚔ 武器補助', armor:'🛡 防具', accessory:'💍 装飾品' };
+
+// stat定義: kind は 'mul'(乗算%), 'add'(加算), 'addhp'(HP+max同時)
+const STAT_DEFS = {
+  atk:        { name:'攻撃力',         icon:'⚔', kind:'mul',   field:'atkMul',         suffix:'%' },
+  fire:       { name:'連射速度',       icon:'🔥', kind:'mul',   field:'fireRateMul',    suffix:'%' },
+  speed:      { name:'弾速',           icon:'💨', kind:'mul',   field:'bulletSpeedMul', suffix:'%' },
+  range:      { name:'取得範囲',       icon:'🧲', kind:'mul',   field:'pickupRange',    suffix:'%' },
+  move:       { name:'移動速度',       icon:'🏃', kind:'mul',   field:'moveSpeed',      suffix:'%' },
+  bulletSize: { name:'弾サイズ',       icon:'⚪', kind:'mul',   field:'bulletSize',     suffix:'%' },
+  coin:       { name:'コイン獲得',     icon:'💰', kind:'mul',   field:'coinMul',        suffix:'%' },
+  xp:         { name:'EXP獲得',        icon:'📚', kind:'mul',   field:'xpMul',          suffix:'%' },
+  hp:         { name:'最大HP',         icon:'❤', kind:'addhp', suffix:'' },
+  crit:       { name:'クリ率',         icon:'✨', kind:'add',   field:'crit',     divisor:100, suffix:'%' },
+  critDmg:    { name:'クリ倍率',       icon:'⚡', kind:'add',   field:'critMul',  divisor:100, suffix:'%' },
+  multi:      { name:'マルチショット', icon:'🎯', kind:'add',   field:'multishot', suffix:'' },
+  pierce:     { name:'貫通',           icon:'🌀', kind:'add',   field:'pierce',    suffix:'' },
+  regen:      { name:'HP再生',         icon:'🌱', kind:'add',   field:'regen',    divisor:10,  suffix:'/s' },
+};
+
+// レアリティ（重み・色・ステ数・倍率）
+const RARITY = {
+  common:    { name:'コモン',     color:'#cccccc', weight:50, stats:1, mul:1.0 },
+  uncommon:  { name:'アンコモン', color:'#a3e635', weight:30, stats:1, mul:1.6 },
+  rare:      { name:'レア',       color:'#3a86ff', weight:14, stats:2, mul:2.2 },
+  epic:      { name:'エピック',   color:'#a855f7', weight:5,  stats:2, mul:3.2 },
+  legendary: { name:'レジェンド', color:'#ffd166', weight:1,  stats:3, mul:4.5 },
+};
+
+// 各スロット × レアリティで5種ずつ = 75種のネーム
+const EQUIP_NAMES = {
+  weapon: {
+    common:    ['鉄の刃','鈍器','鋼の小刀','見習いの剣','錆びた刃'],
+    uncommon:  ['戦士の刃','銀の小刀','鋭利のクリスタル','業火の小刀','風斬りの刃'],
+    rare:      ['火焔の刃','雷光の刀','疾風の剣','破邪の刃','蒼月の刃'],
+    epic:      ['古龍の牙','破滅の鎌','邪神の刀','黒曜の刃','永劫の斧'],
+    legendary: ['神撃エクスカリバー','終焉の剣','創世の刃','天魔の絶刀','滅世の戦斧'],
+  },
+  armor: {
+    common:    ['革の鎧','麻の衣','鉄の胸当て','見習いの鎧','傷んだ鎧'],
+    uncommon:  ['鋼の鎧','修行の道着','銅の重鎧','戦士の鎧','疾風の上着'],
+    rare:      ['騎士の鎧','炎耐の鎧','龍皮の鎧','蒼天の鎧','聖騎の鎧'],
+    epic:      ['古代龍鱗の鎧','破滅の鎧','戦神の鎧','闇黒の重鎧','幻光の鎧'],
+    legendary: ['神々の聖装','永遠の鎧','不朽の鎧','創神の鎧','宿命の鎧'],
+  },
+  accessory: {
+    common:    ['銅のリング','石のお守り','磨かれた小石','銀の腕輪','古い指輪'],
+    uncommon:  ['銀の指輪','幸運のリング','疾風の腕輪','智者の小宝玉','戦士のピアス'],
+    rare:      ['金のリング','智者の宝玉','戦士の印','蒼月のペンダント','鷹眼の魔具'],
+    epic:      ['古代の御守','龍の瞳','英雄の証','闇黒のペンダント','聖光のリング'],
+    legendary: ['神々の宝石','創造の印','宿命の指輪','天魔の冠','宇宙の珠'],
+  },
+};
+
+function pickRarity() {
+  const total = Object.values(RARITY).reduce((s,r)=>s+r.weight, 0);
+  let r = Math.random()*total;
+  for (const [key, def] of Object.entries(RARITY)) {
+    r -= def.weight;
+    if (r <= 0) return key;
+  }
+  return 'common';
+}
+
+function rollEquip(forceSlot, forceRarity) {
+  const rarity = forceRarity || pickRarity();
+  const slot = forceSlot || EQUIP_SLOTS[Math.floor(Math.random()*3)];
+  const def = RARITY[rarity];
+  const names = EQUIP_NAMES[slot][rarity];
+  const name = names[Math.floor(Math.random()*names.length)];
+  const allStatKeys = Object.keys(STAT_DEFS);
+  const stats = [];
+  const used = new Set();
+  for (let i=0; i<def.stats; i++) {
+    let key;
+    let tries = 0;
+    do { key = allStatKeys[Math.floor(Math.random()*allStatKeys.length)]; tries++; } while (used.has(key) && tries<20);
+    used.add(key);
+    let val;
+    if (key === 'multi' || key === 'pierce') {
+      val = (def.mul >= 3 ? 2 : 1);
+    } else if (key === 'hp') {
+      val = Math.ceil((10 + Math.random()*15) * def.mul);
+    } else if (key === 'regen') {
+      val = Math.ceil((1 + Math.random()*4) * def.mul);
+    } else if (key === 'crit') {
+      val = Math.ceil((2 + Math.random()*4) * def.mul);
+    } else if (key === 'critDmg') {
+      val = Math.ceil((6 + Math.random()*10) * def.mul);
+    } else {
+      val = Math.ceil((4 + Math.random()*8) * def.mul);
+    }
+    stats.push({ key, val });
+  }
+  return { slot, rarity, name, stats };
+}
+
+function applyStat(p, stat, sign) {
+  const def = STAT_DEFS[stat.key];
+  if (!def) return;
+  if (def.kind === 'mul') {
+    if (sign > 0) p[def.field] *= (1 + stat.val/100);
+    else          p[def.field] /= (1 + stat.val/100);
+  } else if (def.kind === 'add') {
+    p[def.field] += (stat.val / (def.divisor||1)) * sign;
+  } else if (def.kind === 'addhp') {
+    p.maxHp += stat.val * sign;
+    p.hp += stat.val * sign;
+    if (p.hp > p.maxHp) p.hp = p.maxHp;
+    if (p.hp < 1) p.hp = 1;
+  }
+}
+function equipApply(p, eq)   { for (const s of eq.stats) applyStat(p, s, 1); }
+function equipUnapply(p, eq) { for (const s of eq.stats) applyStat(p, s, -1); }
+
+function statText(stat) {
+  const def = STAT_DEFS[stat.key];
+  if (!def) return '';
+  if (def.kind === 'addhp') return `${def.icon} ${def.name} +${stat.val}`;
+  if (def.kind === 'add') {
+    const v = stat.val / (def.divisor||1);
+    return `${def.icon} ${def.name} +${v}${def.suffix||''}`;
+  }
+  return `${def.icon} ${def.name} +${stat.val}${def.suffix||''}`;
+}
+
+// ---- Enemy ----
+function spawnEnemy(lane, typeOverride) {
+  const t = state.time;
+  const tier = Math.min(5, 1 + Math.floor(t / 40));   // 40秒ごとに段階UP
+  const tBonus = (t > 130 ? (t-130) * 0.4 : 0);
+
+  // タイプ抽選（少し早めに多様化）
+  let type = typeOverride;
+  if (!type) {
+    const r = Math.random();
+    if      (t > 170 && r < 0.12) type = 'splitter';
+    else if (t > 130 && r < 0.22) type = 'shield';
+    else if (t > 100 && r < 0.32) type = 'shooter';
+    else if (t >  65 && r < 0.32) type = 'sprinter';
+    else if (t >  45 && r < 0.32) type = 'zigzag';
+    else type = 'normal';
+  }
+
+  const e = {
+    type, lane, x:LANE_W*(lane+0.5), y:-30,
+    wobble:Math.random()*Math.PI*2, hitFlash:0, slowT:0,
+  };
+  switch (type) {
+    case 'normal':
+      Object.assign(e, {
+        r: 16 + Math.random()*6 + tier*2,
+        hp: Math.floor(11 + tier*8 + t*0.55 + tBonus),
+        speed: 62 + Math.random()*30 + tier*10,
+        color: '#ff6b6b',
+        dmg: 15 + tier*4, xp:1+tier, gold:1+Math.floor(tier/2),
+      });
+      break;
+    case 'zigzag':
+      Object.assign(e, {
+        r: 14,
+        hp: Math.floor(9 + tier*6 + t*0.42 + tBonus*0.7),
+        speed: 52 + tier*9,
+        color: '#feca57',
+        dmg: 13 + tier*3, xp: 2+tier, gold: 2+Math.floor(tier/2),
+        zigPhase: Math.random()*Math.PI*2,
+        zigSpeed: 1.4,
+      });
+      break;
+    case 'sprinter':
+      Object.assign(e, {
+        r: 12,
+        hp: Math.floor(6 + tier*4 + t*0.28),
+        speed: 130 + tier*15,
+        color: '#1dd1a1',
+        dmg: 11 + tier*3, xp: 2+tier, gold: 1+Math.floor(tier/2),
+      });
+      break;
+    case 'shooter':
+      Object.assign(e, {
+        r: 18 + tier*2,
+        hp: Math.floor(15 + tier*9 + t*0.55 + tBonus*0.8),
+        speed: 46 + tier*7,
+        color: '#a29bfe',
+        dmg: 13 + tier*4, xp: 3+tier, gold: 3+Math.floor(tier/2),
+        shootCd: 1.7 + Math.random()*0.5,
+      });
+      break;
+    case 'shield':
+      Object.assign(e, {
+        r: 22 + tier*2,
+        hp: Math.floor(18 + tier*10 + t*0.6 + tBonus),
+        speed: 48 + tier*8,
+        color: '#576574',
+        dmg: 17 + tier*4, xp: 4+tier, gold: 3+Math.floor(tier/2),
+        shielded: true,
+      });
+      break;
+    case 'splitter':
+      Object.assign(e, {
+        r: 20 + tier*2,
+        hp: Math.floor(13 + tier*9 + t*0.55 + tBonus*0.8),
+        speed: 60 + tier*8,
+        color: '#ee5253',
+        dmg: 14 + tier*4, xp: 3+tier, gold: 2+Math.floor(tier/2),
+        splits: 2,
+      });
+      break;
+  }
+  e.maxHp = e.hp;
+  state.enemies.push(e);
+}
+function spawnWave() {
+  const t = state.time;
+  const lanes = [0,1,2].sort(()=>Math.random()-0.5);
+  spawnEnemy(lanes[0]);
+  // 序盤は1レーンのみ、中盤以降に多レーン化（少し早めに）
+  if (t > 18 && Math.random() < Math.min(0.9, (t-18)/70))   spawnEnemy(lanes[1]);
+  if (t > 75 && Math.random() < Math.min(0.7, (t-75)/130)) spawnEnemy(lanes[2]);
+}
+
+// ---- Bonus enemy (sparkly gold, less frequent) ----
+function spawnBonus() {
+  const t = state.time;
+  const lane = Math.floor(Math.random()*3);
+  const hp = Math.floor(35 + t * 0.7);
+  state.enemies.push({
+    lane, x:LANE_W*(lane+0.5), y:-26,
+    r:22, hp, maxHp:hp,
+    speed:48,
+    color:'#ffd166',
+    dmg:10, xp:8, gold:8,  // 多めのXPとゴールド
+    wobble:Math.random()*Math.PI*2, hitFlash:0,
+    slowT:0, bonus:true,
+  });
+}
+
+// ---- Cluster Merge ----
+function checkMerge(dt) {
+  if (state.time < MERGE_START) return;  // 序盤は合体なし
+  for (let lane = 0; lane < 3; lane++) {
+    const inLane = state.enemies.filter(e => e.lane === lane && e.type === 'normal' && !e.merged && e.y > 30);
+    inLane.sort((a,b)=>a.y-b.y);
+    let cluster = null;
+    // 距離100以内で2体以上集まれば合体候補（放置レーンを潰す）
+    for (let i = 0; i <= inLane.length - 2; i++) {
+      const e1 = inLane[i], e2 = inLane[i+1];
+      if (e2.y - e1.y < 100) {
+        cluster = [e1, e2];
+        // 3体目もあれば追加
+        if (inLane[i+2] && inLane[i+2].y - e2.y < 100) cluster.push(inLane[i+2]);
+        break;
+      }
+    }
+    if (cluster) {
+      for (const e of cluster) e.mergeT = (e.mergeT||0) + dt;
+      if (cluster.every(e => e.mergeT >= 1.0)) mergeEnemies(cluster);
+    } else {
+      for (const e of inLane) if (e.mergeT) e.mergeT = Math.max(0, e.mergeT - dt*2);
+    }
+  }
+}
+function mergeEnemies(group) {
+  const cy = group.reduce((s,e)=>s+e.y, 0) / group.length;
+  const totalHp = group.reduce((s,e)=>s+e.hp, 0);
+  const maxDmg = Math.max(...group.map(e=>e.dmg));
+  const totalXp = group.reduce((s,e)=>s+e.xp, 0);
+  const totalGold = group.reduce((s,e)=>s+(e.gold||0), 0);
+  const lane = group[0].lane;
+  for (const e of group) {
+    const idx = state.enemies.indexOf(e);
+    if (idx >= 0) state.enemies.splice(idx, 1);
+    spawnParticles(e.x, e.y, '#9b59b6', 14);
+  }
+  state.shockwaves.push({ x:LANE_W*(lane+0.5), y:cy, r:10, maxR:80, life:0.5, dmg:0, hit:new Set(), color:'#9b59b6' });
+  SFX.merge();
+  state.enemies.push({
+    lane, x:LANE_W*(lane+0.5), y:cy,
+    r:34, hp:Math.ceil(totalHp*1.4), maxHp:Math.ceil(totalHp*1.4),
+    speed:Math.max(40, group[0].speed*0.95),  // 元と同等の速度
+    color:'#9b59b6',
+    dmg:Math.ceil(maxDmg*1.5),
+    xp:Math.ceil(totalXp*1.8),
+    gold:Math.ceil(totalGold*2),
+    wobble:0, hitFlash:0,
+    slowT:0, merged:true,
+    laneSwitchT: 1.0,  // 1秒ごとにプレイヤーレーンへ寄る
+  });
+}
+
+// ---- Input ----
+canvas.addEventListener('touchstart', (e) => {
+  e.preventDefault(); initAudio();
+  if (!state.running) return;
+  const t = e.touches[0]; const rect = canvas.getBoundingClientRect();
+  state.player.targetLane = Math.max(0, Math.min(2, Math.floor((t.clientX - rect.left) / LANE_W)));
+}, { passive:false });
+canvas.addEventListener('touchmove', (e) => {
+  e.preventDefault();
+  if (!state.running) return;
+  const t = e.touches[0]; const rect = canvas.getBoundingClientRect();
+  state.player.targetLane = Math.max(0, Math.min(2, Math.floor((t.clientX - rect.left) / LANE_W)));
+}, { passive:false });
+window.addEventListener('keydown', (e) => {
+  initAudio();
+  if (!state.running) return;
+  if (e.key==='ArrowLeft' || e.key==='a') state.player.targetLane = Math.max(0, state.player.targetLane-1);
+  if (e.key==='ArrowRight' || e.key==='d') state.player.targetLane = Math.min(2, state.player.targetLane+1);
+});
+canvas.addEventListener('mousedown', (e) => {
+  initAudio();
+  if (!state.running) return;
+  const rect = canvas.getBoundingClientRect();
+  state.player.targetLane = Math.max(0, Math.min(2, Math.floor((e.clientX - rect.left) / LANE_W)));
+});
+// ボタンクリック・タップでもオーディオを初期化
+document.addEventListener('click', initAudio, { once:false });
+
+// 中断ボタン
+document.getElementById('quit-btn').addEventListener('click', (ev) => {
+  ev.stopPropagation();
+  if (!state.running) return;
+  state.paused = true;
+  const panel = document.getElementById('panel');
+  panel.innerHTML = `
+    <h2>挑戦を中断しますか？</h2>
+    <p>稼いだコインは保持されます。<br>もう一度タイトルから挑戦できます。</p>
+    <button class="start-btn" id="quit-confirm">タイトルへ戻る</button>
+    <button class="start-btn" id="quit-cancel" style="background:linear-gradient(180deg,#666,#444)">続ける</button>`;
+  document.getElementById('overlay').classList.add('show');
+  document.getElementById('quit-confirm').onclick = () => {
+    state.running = false;
+    saveMeta();
+    stopBGM();
+    showTitle();
+  };
+  document.getElementById('quit-cancel').onclick = () => {
+    state.paused = false;
+    document.getElementById('overlay').classList.remove('show');
+  };
+});
+
+// ---- Combat ----
+function damageEnemy(e, dmg) {
+  let final = dmg, crit = false;
+  if (state.player && Math.random() < state.player.crit) { final = Math.ceil(dmg*state.player.critMul); crit = true; }
+  e.hp -= final;
+  e.hitFlash = 0.1;
+  spawnDmgNum(e.x, e.y - e.r, final, crit);
+  spawnParticles(e.x, e.y, '#fff', 3);
+  SFX.hit();
+  if (e.hp <= 0) {
+    state.kills++;
+    // 吸血
+    if (state.player && state.player.vampire) {
+      state.player.hp = Math.min(state.player.maxHp, state.player.hp + state.player.vampire);
+    }
+    spawnParticles(e.x, e.y, e.color, 12);
+    state.xpOrbs.push({ x:e.x, y:e.y, r:6, value:e.xp });
+    // コインドロップ
+    const baseGold = e.gold || 0;
+    const goldAmt = Math.ceil(baseGold * (state.player.coinMul||1));
+    const piles = e.merged ? 5 : (e.bonus ? 5 : Math.max(1, Math.min(3, Math.ceil(baseGold/2))));
+    const perPile = Math.max(1, Math.ceil(goldAmt / piles));
+    for (let i=0; i<piles; i++) {
+      const ang = Math.random()*Math.PI*2;
+      const sp = 60 + Math.random()*120;
+      state.coins.push({ x:e.x, y:e.y, vx:Math.cos(ang)*sp, vy:-100-Math.random()*120, value:perPile, life:9, bounced:false });
+    }
+    if (e.miniBoss) SFX.bossKill(); else SFX.kill(e);
+    // 装備ドロップ判定
+    let dropChance = 0.005;
+    if (e.miniBoss) dropChance = 1.0;  // ボスは確実
+    else if (e.merged) dropChance = 0.65;
+    else if (e.bonus) dropChance = 0.32;
+    else if (e.shielded) dropChance = 0.10;
+    else if (e.type === 'splitter') dropChance = 0.10;
+    if (Math.random() < dropChance) {
+      // 強い敵ほどレアリティの基礎が上がる
+      let forceRarity = null;
+      if (e.merged && Math.random() < 0.30) forceRarity = 'rare';
+      if (e.bonus && Math.random() < 0.20) forceRarity = 'rare';
+      if (e.miniBoss) forceRarity = Math.random() < 0.5 ? 'rare' : 'epic';
+      const eq = rollEquip(null, forceRarity);
+      SFX.equipDrop();
+      const ang = Math.random()*Math.PI*2;
+      state.equipDrops.push({
+        x:e.x, y:e.y,
+        vx:Math.cos(ang)*40, vy:-150-Math.random()*60,
+        eq, life:14, bounced:false,
+      });
+    }
+    // スプリッター: 倒したら子を2体生む
+    if (e.type === 'splitter' && e.splits > 0) {
+      for (let j=0; j<2; j++) {
+        state.enemies.push({
+          type:'normal', lane:e.lane,
+          x: e.x + (j*2-1)*15, y: e.y - 4,
+          r: e.r * 0.55,
+          hp: Math.ceil(e.maxHp * 0.4),
+          maxHp: Math.ceil(e.maxHp * 0.4),
+          speed: e.speed * 1.3,
+          color: '#fab1a0',
+          dmg: Math.ceil(e.dmg * 0.6),
+          xp: 1, gold: 1,
+          wobble: Math.random()*Math.PI*2, hitFlash:0, slowT:0,
+        });
+      }
+    }
+    return true;
+  }
+  return false;
+}
+function damagePlayer(dmg) {
+  const p = state.player;
+  if (p.invul > 0) return;
+  // 回避判定
+  if (p.dodge && Math.random() < p.dodge) {
+    p.invul = 0.4;
+    state.particles.push({ x:p.x, y:p.y-40, vx:0, vy:-50, life:0.8, color:'#a3e635', r:0, txt:'MISS', big:true });
+    SFX.pickup();
+    return;
+  }
+  p.hp -= dmg; p.invul = 0.6;
+  spawnParticles(p.x, p.y, '#ff4757', 10);
+  SFX.hurt();
+  if (p.hp <= 0) { p.hp = 0; gameOver(); }
+}
+function spawnParticles(x,y,color,n){
+  for (let i=0;i<n;i++) {
+    const a = Math.random()*Math.PI*2, s = 60+Math.random()*120;
+    state.particles.push({ x, y, vx:Math.cos(a)*s, vy:Math.sin(a)*s, life:0.4+Math.random()*0.3, color, r:2+Math.random()*2 });
+  }
+}
+function spawnDmgNum(x,y,n,crit) {
+  state.particles.push({ x, y, vx:0, vy:-50, life:0.7, color:crit?'#feca57':'#fff', r:0, txt:Math.ceil(n).toString(), big:crit });
+}
+
+// ---- XP / Level ----
+function gainXP(v) {
+  state.xp += Math.ceil(v * state.player.xpMul);
+  while (state.xp >= state.xpToNext) {
+    state.xp -= state.xpToNext;
+    state.level++;
+    state.xpToNext = Math.floor(state.xpToNext * 1.4 + 2);
+    showLevelUp();
+  }
+  updateHUD();
+}
+
+function getEvolutionsFor(p) {
+  const evos = [];
+  for (const evo of EVOLUTIONS) {
+    if (!p.weapons[evo.base]) continue;
+    if (p.weapons[evo.base].lvl < EVOLVE_LVL) continue;
+    if (p.weapons[evo.result]) continue;
+    if (!p.passivesOwned.has(evo.req)) continue;
+    evos.push(evo);
+  }
+  return evos;
+}
+
+function rollUpgradeChoices() {
+  const p = state.player;
+  const choices = [];
+  // 進化候補があれば必ず1枠
+  const evos = getEvolutionsFor(p);
+  if (evos.length) choices.push({ kind:'evolve', evo:evos[Math.floor(Math.random()*evos.length)] });
+
+  const baseWeapons = Object.keys(WEAPON_DEFS).filter(k => !WEAPON_DEFS[k].evolved);
+  const ownedKeys = Object.keys(p.weapons);
+  const notOwned = baseWeapons.filter(k => !ownedKeys.includes(k));
+  const upgradable = ownedKeys.filter(k => p.weapons[k].lvl < MAX_WLVL);
+
+  // 武器プール
+  const weaponPool = [];
+  if (ownedKeys.length < 3 && notOwned.length) {
+    for (const k of notOwned) weaponPool.push({ kind:'newWeapon', key:k });
+  }
+  for (const k of upgradable) weaponPool.push({ kind:'upWeapon', key:k });
+
+  // パッシブプール
+  const passivePool = Object.keys(PASSIVES).map(k => ({ kind:'passive', key:k }));
+
+  weaponPool.sort(() => Math.random() - 0.5);
+  passivePool.sort(() => Math.random() - 0.5);
+
+  // 残り枠は 50/50 で武器 vs パッシブ。片方が枯れたらもう片方から
+  while (choices.length < 3) {
+    const wantWeapon = Math.random() < 0.5;
+    let pick = null;
+    if (wantWeapon && weaponPool.length) pick = weaponPool.shift();
+    else if (passivePool.length) pick = passivePool.shift();
+    else if (weaponPool.length) pick = weaponPool.shift();
+    if (!pick) break;
+    choices.push(pick);
+  }
+  return choices.slice(0, 3);
+}
+
+function showLevelUp() {
+  state.paused = true;
+  SFX.levelup();
+  const choices = rollUpgradeChoices();
+  const panel = document.getElementById('panel');
+  const html = choices.map((c, i) => {
+    if (c.kind === 'evolve') {
+      const w = WEAPON_DEFS[c.evo.result];
+      return `<button class="upgrade-btn evo" data-i="${i}">⭐ 進化: ${w.icon} ${w.name}<span class="desc">${c.evo.desc}</span></button>`;
+    } else if (c.kind === 'newWeapon') {
+      const w = WEAPON_DEFS[c.key];
+      const txt = w.intro || (w.desc ? w.desc(1) : '新しい武器');
+      return `<button class="upgrade-btn new" data-i="${i}"><span style="font-size:18px">${w.icon}</span> 新武器: ${w.name}<span class="desc">${txt}</span></button>`;
+    } else if (c.kind === 'upWeapon') {
+      const w = WEAPON_DEFS[c.key]; const cur = state.player.weapons[c.key].lvl;
+      const txt = (w.lvlText && w.lvlText[cur+1]) ? w.lvlText[cur+1] : (w.desc ? w.desc(cur+1) : '性能向上');
+      return `<button class="upgrade-btn" data-i="${i}"><span style="font-size:18px">${w.icon}</span> ${w.name} Lv.${cur}→${cur+1}<span class="desc">${txt}</span></button>`;
+    } else {
+      const d = PASSIVES[c.key];
+      return `<button class="upgrade-btn" data-i="${i}"><span style="font-size:18px">${d.icon}</span> ${d.name}<span class="desc">${d.desc}</span></button>`;
+    }
+  }).join('');
+  panel.innerHTML = `<h2>LEVEL UP!  Lv.${state.level}</h2><p>強化を1つ選択</p>${html}`;
+  panel.querySelectorAll('.upgrade-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const c = choices[+btn.dataset.i];
+      const p = state.player;
+      if (c.kind === 'evolve') {
+        delete p.weapons[c.evo.base];
+        p.weapons[c.evo.result] = { lvl:1, cd:0, evo:true };
+        SFX.evolve();
+      } else if (c.kind === 'newWeapon') {
+        p.weapons[c.key] = { lvl:1, cd:0, evo:false };
+        SFX.gameStart();
+      } else if (c.kind === 'upWeapon') {
+        p.weapons[c.key].lvl++;
+        SFX.shopBuy();
+      } else {
+        PASSIVES[c.key].apply(p);
+        p.passivesOwned.add(c.key);
+        SFX.equipPickup();
+      }
+      document.getElementById('overlay').classList.remove('show');
+      state.paused = false;
+      renderWeaponBar();
+    });
+  });
+  document.getElementById('overlay').classList.add('show');
+}
+
+function renderWeaponBar() {
+  const bar = document.getElementById('weapon-bar');
+  bar.innerHTML = '';
+  for (const k in state.player.weapons) {
+    const w = WEAPON_DEFS[k]; const wd = state.player.weapons[k];
+    const div = document.createElement('div');
+    div.className = 'wslot' + (wd.evo?' evolved':'');
+    div.innerHTML = `${w.icon}<span class="lvl">${wd.lvl}</span>`;
+    bar.appendChild(div);
+  }
+}
+
+// ---- Game flow ----
+function startGame() {
+  state.running = true; state.paused = false; state.cleared = false;
+  state.time = 0; state.lastSpawn = 0; state.spawnInterval = 1.4;
+  state.bonusSpawnT = 18 + Math.random()*5;
+  state.kills = 0;
+  state.enemies=[]; state.bullets=[]; state.enemyBullets=[]; state.particles=[]; state.xpOrbs=[]; state.coins=[];
+  state.shockwaves=[]; state.lasers=[]; state.mines=[]; state.drones=[]; state.firewalls=[]; state.equipDrops=[];
+  state.level = 1; state.xp = 0; state.xpToNext = 5;
+  state.player = createPlayer();
+  applyEquippedToPlayer(state.player);
+  document.getElementById('overlay').classList.remove('show');
+  document.getElementById('quit-btn').classList.add('show');
+  initAudio();
+  SFX.gameStart();
+  startBGM();
+  renderWeaponBar();
+  updateHUD();
+}
+function gameOver() {
+  state.running = false;
+  saveMeta();
+  SFX.gameover();
+  stopBGM();
+  document.getElementById('quit-btn').classList.remove('show');
+  const panel = document.getElementById('panel');
+  panel.innerHTML = `
+    <h2>GAME OVER</h2>
+    <p>生存時間: ${Math.floor(state.time)}秒 / ${CLEAR_TIME}秒<br>
+       撃破数: ${state.kills}<br>到達Lv: ${state.level}<br>
+       💰 累計ゴールド: ${state.gold} G</p>
+    <button class="start-btn" id="restart">もう一度</button>
+    <button class="start-btn shop-btn" id="totitle">タイトルへ</button>`;
+  document.getElementById('overlay').classList.add('show');
+  document.getElementById('restart').onclick = startGame;
+  document.getElementById('totitle').onclick = showTitle;
+}
+function victory() {
+  state.running = false; state.cleared = true;
+  // クリアボーナス
+  state.gold += 200;  // 5分耐久のご褒美
+  saveMeta();
+  SFX.victory();
+  stopBGM();
+  document.getElementById('quit-btn').classList.remove('show');
+  const panel = document.getElementById('panel');
+  panel.innerHTML = `
+    <h2 style="color:#ffd166">🏆 CLEAR! 🏆</h2>
+    <p>${CLEAR_TIME}秒生き残った！<br>
+       撃破数: <b>${state.kills}</b><br>到達Lv: <b>${state.level}</b><br>
+       残HP: <b>${Math.ceil(state.player.hp)}/${state.player.maxHp}</b><br>
+       <span style="color:#ffd166">💰 クリアボーナス +200 G</span><br>
+       💰 累計: ${state.gold} G</p>
+    <button class="start-btn" id="restart">もう一度</button>
+    <button class="start-btn shop-btn" id="totitle">タイトルへ</button>`;
+  document.getElementById('overlay').classList.add('show');
+  document.getElementById('restart').onclick = startGame;
+  document.getElementById('totitle').onclick = showTitle;
+  const p = state.player;
+  for (let i=0;i<80;i++) {
+    const a=Math.random()*Math.PI*2, s=100+Math.random()*250;
+    state.particles.push({ x:p.x, y:p.y, vx:Math.cos(a)*s, vy:Math.sin(a)*s, life:1.2, color:['#ffd166','#fff','#4cc9f0','#a3e635'][i%4], r:3+Math.random()*3 });
+  }
+}
+function showTitle() {
+  const panel = document.getElementById('panel');
+  panel.innerHTML = `
+    <h2>🎯 BALL PIT SURVIVOR</h2>
+    <p>3レーンを駆け抜け、降ってくるボールを撃退！<br>
+       武器は自動発射。Lvアップで強化＆新武器を獲得。<br>
+       武器Maxレベル＋特定パッシブで<b style="color:#ffd166">武器進化</b>解放！<br>
+       <b style="color:#ffd166">🏆 ${CLEAR_TIME}秒(5分)生き残ったらクリア！</b></p>
+    <p style="color:#ffd166;font-size:14px">💰 所持ゴールド: <b>${state.gold} G</b></p>
+    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:8px 0">
+      <button class="start-btn shop-btn" id="shop" style="font-size:13px;padding:9px 18px">💰 ショップ</button>
+      <button class="start-btn" id="inv" style="background:linear-gradient(180deg,#a855f7,#7c3aed);font-size:13px;padding:9px 18px">🎒 装備 (${state.inventory.length})</button>
+    </div>
+    <button class="start-btn" id="start" style="font-size:20px;padding:16px 48px;display:block;margin:10px auto">START</button>
+    <button id="bgm-toggle" style="background:rgba(0,0,0,0.4);border:1px solid #4cc9f0;color:#4cc9f0;padding:6px 14px;border-radius:6px;font-size:11px;cursor:pointer;margin-top:6px">${bgmEnabled?'🔊 BGM: ON':'🔇 BGM: OFF'}</button>`;
+  document.getElementById('overlay').classList.add('show');
+  document.getElementById('start').onclick = startGame;
+  document.getElementById('shop').onclick = showShop;
+  document.getElementById('inv').onclick = showInventory;
+  document.getElementById('bgm-toggle').onclick = () => { initAudio(); toggleBGM(); showTitle(); };
+}
+function showShop() {
+  const panel = document.getElementById('panel');
+  const rows = Object.entries(SHOP_DEFS).map(([key, def]) => {
+    const lvl = state.ups[key] || 0;
+    const maxed = lvl >= def.max;
+    const cost = maxed ? null : shopCost(key, lvl);
+    const can = !maxed && state.gold >= cost;
+    return `
+      <div class="shop-row${maxed?' maxed':''}">
+        <div style="flex:1">
+          <div class="name">${def.name}</div>
+          <span class="desc">${def.desc}</span>
+        </div>
+        <span class="lvl">Lv.${lvl}/${def.max}</span>
+        <button data-k="${key}" ${maxed||!can?'disabled':''}>${maxed?'MAX':`💰 ${cost}`}</button>
+      </div>`;
+  }).join('');
+  const saveStatus = saveOk
+    ? `<p style="font-size:10px;color:#a3e635;opacity:.85">💾 セーブ有効：ゴールドと強化はブラウザに保存されます</p>`
+    : `<p style="font-size:10px;color:#ff6b6b">⚠ セーブが無効：プライベートモードかもしれません</p>`;
+  panel.innerHTML = `
+    <h2>💰 ショップ</h2>
+    <p style="color:#ffd166">所持: <b>${state.gold} G</b></p>
+    ${rows}
+    ${saveStatus}
+    <button class="start-btn" id="back">戻る</button>
+    <button class="start-btn" id="reset" style="background:linear-gradient(180deg,#666,#333);font-size:11px;padding:6px 14px">🗑 セーブをリセット</button>`;
+  document.getElementById('overlay').classList.add('show');
+  panel.querySelectorAll('button[data-k]').forEach(btn => {
+    btn.onclick = () => {
+      const k = btn.dataset.k;
+      const lvl = state.ups[k] || 0;
+      const cost = shopCost(k, lvl);
+      if (state.gold >= cost && lvl < SHOP_DEFS[k].max) {
+        state.gold -= cost;
+        state.ups[k] = lvl + 1;
+        saveMeta();
+        SFX.shopBuy();
+        showShop();
+      }
+    };
+  });
+  document.getElementById('reset').onclick = () => {
+    if (confirm('全ての永続強化と所持ゴールドを消去します。よろしいですか？')) {
+      resetMeta();
+      saveMeta();
+      showShop();
+    }
+  };
+  document.getElementById('back').onclick = showTitle;
+}
+function updateHUD() {
+  document.getElementById('lvl').textContent = state.level;
+  document.getElementById('time').textContent = Math.min(CLEAR_TIME, Math.floor(state.time));
+  document.getElementById('kills').textContent = state.kills;
+  document.getElementById('gold').textContent = state.gold;
+  if (state.player) document.getElementById('hpbar').style.width = (state.player.hp/state.player.maxHp*100)+'%';
+  document.getElementById('xpbar').style.width = (state.xp/state.xpToNext*100)+'%';
+}
+
+// ---- Loop ----
+let last = performance.now();
+function loop(now) {
+  const dt = Math.min(0.05, (now-last)/1000);
+  last = now;
+  if (state.running && !state.paused) update(dt);
+  render();
+  requestAnimationFrame(loop);
+}
+
+function update(dt) {
+  state.time += dt;
+  const p = state.player;
+  if (!state.cleared && state.time >= CLEAR_TIME) { victory(); return; }
+  // 5分のゲーム尺。少し難しめに調整
+  state.spawnInterval = Math.max(0.38, 1.45 - Math.pow(state.time/CLEAR_TIME, 1.2) * 1.07);
+
+  const tx = LANE_W*(p.targetLane+0.5);
+  p.x += (tx - p.x) * Math.min(1, dt*p.moveSpeed);
+  p.lane = p.targetLane;
+  if (p.invul > 0) p.invul -= dt;
+  if (p.regen > 0 && p.hp < p.maxHp) p.hp = Math.min(p.maxHp, p.hp + p.regen*dt);
+
+  // 武器
+  for (const k in p.weapons) WEAPON_DEFS[k].update(p, p.weapons[k], dt);
+
+  // スポーン
+  state.lastSpawn += dt;
+  if (state.lastSpawn >= state.spawnInterval) { state.lastSpawn = 0; spawnWave(); }
+  // ボーナス（25〜35秒間隔）
+  state.bonusSpawnT -= dt;
+  if (state.bonusSpawnT <= 0) {
+    state.bonusSpawnT = 25 + Math.random()*10;
+    spawnBonus();
+  }
+  // ボスウェーブ（60秒ごと）
+  state.bossSpawnT = (state.bossSpawnT||60) - dt;
+  if (state.bossSpawnT <= 0 && state.time >= 55) {
+    state.bossSpawnT = 60;
+    spawnMiniBoss();
+  }
+  // 合体
+  checkMerge(dt);
+
+  // 弾
+  for (let i=state.bullets.length-1; i>=0; i--) {
+    const b = state.bullets[i];
+    // ブーメラン挙動
+    if (b.boom) {
+      b.age += dt;
+      if (b.age > b.returnT) {
+        b.vx *= -1; b.vy *= -1;  // 反転
+        b.age = -999;  // フラグ
+      }
+    }
+    // 追尾弾：毎フレーム最寄りの敵に向きを補正
+    if (b.homing) {
+      let bestTgt = null, bd2 = 1e9;
+      for (const e of state.enemies) {
+        const ex = e.x - b.x, ey = e.y - b.y;
+        const d2 = ex*ex + ey*ey;
+        if (d2 < bd2) { bd2 = d2; bestTgt = e; }
+      }
+      if (bestTgt) {
+        const tx = bestTgt.x - b.x, ty = bestTgt.y - b.y;
+        const tl = Math.sqrt(tx*tx+ty*ty) || 1;
+        const desiredVx = tx/tl * b.homingSpeed;
+        const desiredVy = ty/tl * b.homingSpeed;
+        b.vx += (desiredVx - b.vx) * Math.min(1, dt*6);
+        b.vy += (desiredVy - b.vy) * Math.min(1, dt*6);
+      }
+    }
+    b.x += b.vx*dt; b.y += b.vy*dt;
+    if (b.x<-30||b.x>W+30||b.y<-30||b.y>H+30) { state.bullets.splice(i,1); continue; }
+    let dead = false;
+    for (let j=state.enemies.length-1; j>=0; j--) {
+      const e = state.enemies[j];
+      if (b.lane >= 0 && e.lane !== b.lane) continue;
+      const dx = e.x-b.x, dy = e.y-b.y;
+      if (dx*dx+dy*dy < (e.r+b.r)*(e.r+b.r)) {
+        if (b.slow) e.slowT = Math.max(e.slowT||0, b.slow);
+        // 凍結：確率で発動、敵を一定時間止める
+        if (b.freeze && Math.random() < b.freeze) {
+          e.frozenT = Math.max(e.frozenT||0, 1.4);
+          SFX.freeze();
+        }
+        // シールド：上向きの弾は大幅減衰（マイン・衝撃波で対応する戦術）
+        let dmg = b.dmg;
+        if (e.shielded && b.vy < 0) dmg = Math.ceil(dmg * 0.3);
+        const k = damageEnemy(e, dmg);
+        if (k) state.enemies.splice(j,1);
+        // みかん／ボムオレンジ：当たって即爆発
+        if (b.explode) {
+          state.shockwaves.push({
+            x:b.x, y:b.y, r:10, maxR:b.splashR,
+            life:0.4, dmg:b.splashDmg, hit:new Set(k?[]:[e]), color:'#ff9f43'
+          });
+          spawnParticles(b.x, b.y, '#ff9f43', 14);
+          SFX.shock();
+          state.bullets.splice(i,1); dead = true; break;
+        }
+        if (b.pierce > 0) b.pierce--;
+        else { state.bullets.splice(i,1); dead = true; break; }
+      }
+    }
+    if (dead) continue;
+  }
+
+  // レーザー
+  for (let i=state.lasers.length-1; i>=0; i--) {
+    const L = state.lasers[i];
+    L.life -= dt;
+    if (L.life > 0.2 && !L.applied) {
+      L.applied = true;
+      for (let j=state.enemies.length-1; j>=0; j--) {
+        const e = state.enemies[j];
+        if (e.lane !== L.lane) continue;
+        let dmg = L.dmg;
+        if (e.shielded) dmg = Math.ceil(dmg * 0.3);
+        const k = damageEnemy(e, dmg);
+        if (k) state.enemies.splice(j,1);
+      }
+    }
+    if (L.life <= 0) state.lasers.splice(i,1);
+  }
+
+  // 衝撃波
+  for (let i=state.shockwaves.length-1; i>=0; i--) {
+    const s = state.shockwaves[i];
+    s.r += (s.maxR-s.r)*dt*6;
+    s.life -= dt;
+    for (let j=state.enemies.length-1; j>=0; j--) {
+      const e = state.enemies[j];
+      if (s.hit.has(e)) continue;
+      const dx = e.x-s.x, dy = e.y-s.y;
+      if (dx*dx+dy*dy < s.r*s.r) {
+        s.hit.add(e);
+        if (s.dmg > 0) {
+          const k = damageEnemy(e, s.dmg);
+          if (k) state.enemies.splice(j,1);
+        }
+      }
+    }
+    if (s.life <= 0) state.shockwaves.splice(i,1);
+  }
+
+  // ファイアウォール (持続ダメージ)
+  for (let i=state.firewalls.length-1; i>=0; i--) {
+    const f = state.firewalls[i];
+    f.life -= dt;
+    f.tickCd -= dt;
+    if (f.tickCd <= 0) {
+      f.tickCd = 0.3;
+      for (let j=state.enemies.length-1; j>=0; j--) {
+        const e = state.enemies[j];
+        if (!f.lanes.includes(e.lane)) continue;
+        if (Math.abs(e.y - f.y) > 30) continue;
+        const k = damageEnemy(e, f.dmg);
+        if (k) state.enemies.splice(j,1);
+      }
+    }
+    if (f.life <= 0) state.firewalls.splice(i,1);
+  }
+
+  // マイン
+  for (let i=state.mines.length-1; i>=0; i--) {
+    const m = state.mines[i]; m.life -= dt; m.armed -= dt;
+    if (m.armed > 0) continue;
+    let det = false;
+    for (const e of state.enemies) {
+      const dx = e.x-m.x, dy = e.y-m.y;
+      if (dx*dx+dy*dy < (e.r+m.r)*(e.r+m.r)) { det = true; break; }
+    }
+    if (det || m.life <= 0) {
+      for (let j=state.enemies.length-1; j>=0; j--) {
+        const e = state.enemies[j];
+        const dx = e.x-m.x, dy = e.y-m.y;
+        if (dx*dx+dy*dy < m.blast*m.blast) {
+          const k = damageEnemy(e, m.dmg);
+          if (k) state.enemies.splice(j,1);
+        }
+      }
+      spawnParticles(m.x, m.y, '#ff9f43', 18);
+      if (m.chain > 0) {
+        for (const m2 of state.mines) {
+          if (m2 === m) continue;
+          const dx = m2.x-m.x, dy = m2.y-m.y;
+          if (dx*dx+dy*dy < (m.blast*1.5)*(m.blast*1.5)) m2.armed = -1;
+        }
+      }
+      state.mines.splice(i,1);
+    }
+  }
+
+  // 敵移動 & 接触
+  for (let i=state.enemies.length-1; i>=0; i--) {
+    const e = state.enemies[i];
+    e.wobble += dt*4;
+    if (e.hitFlash > 0) e.hitFlash -= dt;
+    if (e.slowT > 0) e.slowT -= dt;
+    if (e.frozenT > 0) e.frozenT -= dt;
+    // 凍結中は速度0、スロー中は0.4倍
+    const speedMul = e.frozenT > 0 ? 0 : (e.slowT > 0 ? 0.4 : 1);
+    e.y += e.speed * speedMul * dt;
+
+    // タイプ別の動作
+    if (e.type === 'zigzag') {
+      // 瞬間移動：一定間隔で別レーンへ飛ぶ
+      e.tpT = (e.tpT==null ? 0.8 + Math.random()*0.4 : e.tpT - dt*speedMul);
+      if (e.tpT <= 0) {
+        e.tpT = 0.8 + Math.random()*0.4;
+        spawnParticles(e.x, e.y, e.color, 8);
+        const lanes = [0,1,2].filter(l => l !== e.lane);
+        e.lane = lanes[Math.floor(Math.random()*lanes.length)];
+        const newX = LANE_W*(e.lane+0.5);
+        for (let pp=0; pp<8; pp++) {
+          const a = Math.random()*Math.PI*2, s = 60+Math.random()*80;
+          state.particles.push({ x:newX, y:e.y, vx:Math.cos(a)*s, vy:Math.sin(a)*s, life:0.4, color:e.color, r:2 });
+        }
+      }
+      e.x = LANE_W*(e.lane+0.5);
+    } else if (e.merged) {
+      const pl = p.targetLane;
+      e.laneSwitchT -= dt;
+      if (e.laneSwitchT <= 0 && e.lane !== pl) {
+        e.lane += Math.sign(pl - e.lane);
+        e.laneSwitchT = 1.0;
+      }
+      const targetX = LANE_W*(e.lane+0.5) + Math.sin(e.wobble)*4;
+      e.x += (targetX - e.x) * Math.min(1, dt*3);
+    } else {
+      e.x = LANE_W*(e.lane+0.5) + Math.sin(e.wobble)*6;
+    }
+
+    // シューターは弾を撃つ（凍結中は撃たない）
+    if (e.type === 'shooter' && e.y > 40 && e.y < H - 40 && e.frozenT <= 0) {
+      e.shootCd -= dt * speedMul;
+      if (e.shootCd <= 0) {
+        e.shootCd = 2.0 + Math.random()*0.7;
+        const dx = p.x - e.x, dy = p.y - e.y;
+        const d = Math.sqrt(dx*dx+dy*dy)||1;
+        state.enemyBullets.push({
+          x:e.x, y:e.y+e.r*0.4,
+          vx: dx/d * 240, vy: dy/d * 240,
+          r: 6, dmg: 8 + Math.floor(state.time/30)*2,
+          color: '#a29bfe',
+        });
+        SFX.shoot();
+      }
+    }
+
+    const dx = e.x-p.x, dy = e.y-p.y;
+    if (dx*dx+dy*dy < (e.r+PLAYER_SIZE/2)*(e.r+PLAYER_SIZE/2)) {
+      damagePlayer(e.dmg);
+      state.enemies.splice(i,1);
+      spawnParticles(e.x, e.y, e.color, 10);
+      continue;
+    }
+    if (e.y > H+e.r+10) state.enemies.splice(i,1);
+  }
+
+  // 敵の弾
+  for (let i=state.enemyBullets.length-1; i>=0; i--) {
+    const b = state.enemyBullets[i];
+    b.x += b.vx*dt; b.y += b.vy*dt;
+    if (b.x<-30 || b.x>W+30 || b.y<-30 || b.y>H+30) {
+      state.enemyBullets.splice(i,1); continue;
+    }
+    const dx = b.x - p.x, dy = b.y - p.y;
+    if (dx*dx+dy*dy < (b.r+PLAYER_SIZE/2)*(b.r+PLAYER_SIZE/2)) {
+      damagePlayer(b.dmg);
+      state.enemyBullets.splice(i,1);
+    }
+  }
+
+  // XPオーブ
+  for (let i=state.xpOrbs.length-1; i>=0; i--) {
+    const o = state.xpOrbs[i];
+    const dx = p.x-o.x, dy = p.y-o.y, d2 = dx*dx+dy*dy;
+    if (d2 < p.pickupRange*p.pickupRange) {
+      const d = Math.sqrt(d2)||1;
+      o.x += dx/d*700*dt; o.y += dy/d*700*dt;
+    } else { o.y += 30*dt; }
+    if (d2 < 400) { gainXP(o.value); state.xpOrbs.splice(i,1); SFX.pickup(); }
+  }
+
+  // コイン (物理 + バウンド + 自動取得)
+  for (let i=state.coins.length-1; i>=0; i--) {
+    const c = state.coins[i];
+    c.x += c.vx*dt;
+    c.vy += 800*dt;
+    c.y += c.vy*dt;
+    c.life -= dt;
+    if (!c.bounced && c.y > H*GROUND_Y_RATIO) {
+      c.y = H*GROUND_Y_RATIO;
+      c.vy = -Math.abs(c.vy)*0.45;
+      c.vx *= 0.7;
+      if (Math.abs(c.vy) < 60) { c.bounced=true; c.vx=0; c.vy=0; }
+    }
+    const dx = p.x-c.x, dy = p.y-c.y, d2 = dx*dx+dy*dy;
+    if (d2 < (p.pickupRange*0.85)*(p.pickupRange*0.85)) {
+      const d = Math.sqrt(d2)||1;
+      c.x += dx/d*700*dt; c.y += dy/d*700*dt;
+    }
+    if (d2 < 400) {
+      state.gold += c.value;
+      state.coins.splice(i,1);
+      saveMeta();
+      SFX.coin();
+      state.particles.push({ x:p.x, y:p.y-30, vx:0, vy:-50, life:0.7, color:'#ffd166', r:0, txt:'+'+c.value });
+      continue;
+    }
+    if (c.life <= 0) state.coins.splice(i,1);
+  }
+
+  // 装備ドロップ (物理 + バウンド + 接近で拾う)
+  for (let i=state.equipDrops.length-1; i>=0; i--) {
+    const ed = state.equipDrops[i];
+    ed.x += ed.vx*dt;
+    ed.vy += 800*dt;
+    ed.y += ed.vy*dt;
+    ed.life -= dt;
+    if (!ed.bounced && ed.y > H*GROUND_Y_RATIO) {
+      ed.y = H*GROUND_Y_RATIO;
+      ed.vy = -Math.abs(ed.vy)*0.45;
+      ed.vx *= 0.7;
+      if (Math.abs(ed.vy) < 60) { ed.bounced=true; ed.vx=0; ed.vy=0; }
+    }
+    const dx = p.x-ed.x, dy = p.y-ed.y, d2 = dx*dx+dy*dy;
+    if (d2 < (p.pickupRange*1.0)*(p.pickupRange*1.0)) {
+      const d = Math.sqrt(d2)||1;
+      ed.x += dx/d*500*dt; ed.y += dy/d*500*dt;
+    }
+    if (d2 < 600) {
+      state.equipDrops.splice(i,1);
+      SFX.equipPickup();
+      addToInventory(ed.eq);
+    }
+    if (ed.life <= 0) state.equipDrops.splice(i,1);
+  }
+
+  // パーティクル
+  for (let i=state.particles.length-1; i>=0; i--) {
+    const pa = state.particles[i];
+    pa.x += pa.vx*dt; pa.y += pa.vy*dt;
+    if (pa.txt) pa.vy = Math.min(pa.vy + 60*dt, 0);
+    else { pa.vx *= 0.92; pa.vy *= 0.92; }
+    pa.life -= dt;
+    if (pa.life <= 0) state.particles.splice(i,1);
+  }
+
+  if (Math.floor(state.time*4) % 2 === 0) updateHUD();
+}
+
+// ---- Render ----
+function render() {
+  ctx.clearRect(0,0,W,H);
+
+  // 背景グリッド
+  ctx.strokeStyle = 'rgba(76,201,240,0.08)'; ctx.lineWidth = 1;
+  const off = (state.time*80) % 40;
+  for (let y=-40+off; y<H; y+=40) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+  ctx.strokeStyle = 'rgba(76,201,240,0.22)';
+  for (let i=1;i<3;i++) { ctx.beginPath(); ctx.moveTo(LANE_W*i,0); ctx.lineTo(LANE_W*i,H); ctx.stroke(); }
+  // 地面
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+  ctx.beginPath(); ctx.moveTo(0,H*GROUND_Y_RATIO); ctx.lineTo(W,H*GROUND_Y_RATIO); ctx.stroke();
+
+  if (!state.player) return;
+  const p = state.player;
+
+  // ファイアウォール
+  for (const f of state.firewalls) {
+    const a = Math.min(1, f.life/2.5);
+    for (const lane of f.lanes) {
+      const grad = ctx.createLinearGradient(0, f.y-30, 0, f.y+30);
+      grad.addColorStop(0, `rgba(255,159,67,0)`);
+      grad.addColorStop(0.5, `rgba(255,107,107,${a*0.8})`);
+      grad.addColorStop(1, `rgba(255,159,67,0)`);
+      ctx.fillStyle = grad;
+      ctx.fillRect(LANE_W*lane, f.y-30, LANE_W, 60);
+      // 揺らめくロウソク状
+      for (let i=0; i<6; i++) {
+        const fx = LANE_W*lane + LANE_W*(0.1 + i*0.15);
+        const fh = 20 + Math.sin(state.time*8 + i)*8;
+        ctx.fillStyle = `rgba(255,107,107,${a*0.7})`;
+        ctx.beginPath();
+        ctx.moveTo(fx, f.y+10);
+        ctx.lineTo(fx+10, f.y+10);
+        ctx.lineTo(fx+5, f.y - fh);
+        ctx.closePath(); ctx.fill();
+      }
+    }
+  }
+
+  // マイン
+  for (const m of state.mines) {
+    ctx.save(); ctx.translate(m.x, m.y);
+    ctx.fillStyle = m.armed > 0 ? '#888' : (Math.floor(state.time*8)%2 ? '#ff4757' : '#feca57');
+    ctx.beginPath(); ctx.arc(0,0,m.r,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(0,0,m.r*0.4,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+  // 衝撃波
+  for (const s of state.shockwaves) {
+    ctx.strokeStyle = s.color || '#fff';
+    ctx.globalAlpha = Math.max(0, s.life*1.5); ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI*2); ctx.stroke();
+    ctx.lineWidth = 1.5; ctx.strokeStyle = '#fff';
+    ctx.beginPath(); ctx.arc(s.x, s.y, s.r*0.85, 0, Math.PI*2); ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+  // レーザー
+  for (const L of state.lasers) {
+    const a = Math.min(1, L.life/0.45);
+    const cstr = L.color === '#ffd166' ? '255,209,102' : '255,255,255';
+    const grad = ctx.createLinearGradient(0,0,0,H);
+    grad.addColorStop(0, `rgba(${cstr},${a*0.9})`);
+    grad.addColorStop(1, `rgba(${cstr},${a*0.3})`);
+    ctx.fillStyle = grad;
+    ctx.fillRect(LANE_W*L.lane + LANE_W/2 - L.width/2, 0, L.width, p.y);
+    ctx.fillStyle = `rgba(255,255,255,${a})`;
+    ctx.fillRect(LANE_W*L.lane + LANE_W/2 - 2, 0, 4, p.y);
+  }
+
+  // XPオーブ
+  for (const o of state.xpOrbs) {
+    ctx.fillStyle = '#2ed573';
+    ctx.shadowColor = '#7bed9f'; ctx.shadowBlur = 8;
+    ctx.beginPath(); ctx.arc(o.x, o.y, o.r, 0, Math.PI*2); ctx.fill();
+    ctx.shadowBlur = 0;
+  }
+
+  // コイン (バウンド)
+  for (const c of state.coins) {
+    ctx.save(); ctx.translate(c.x, c.y);
+    const sp = Math.abs(Math.sin(state.time*8)*0.5+0.5);
+    ctx.fillStyle = '#ffd166';
+    ctx.shadowColor = '#fff8a3'; ctx.shadowBlur = 10;
+    ctx.beginPath(); ctx.ellipse(0, 0, 8*sp+3, 8, 0, 0, Math.PI*2); ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = '#9a6c00'; ctx.lineWidth = 1.5; ctx.stroke();
+    if (sp > 0.5) {
+      ctx.fillStyle = '#9a6c00'; ctx.font='bold 9px sans-serif';
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText('G', 0, 1);
+    }
+    ctx.restore();
+  }
+
+  // 合体警告線
+  for (let lane = 0; lane < 3; lane++) {
+    const cluster = state.enemies.filter(e => e.lane === lane && e.mergeT > 0);
+    if (cluster.length >= 2) {
+      cluster.sort((a,b)=>a.y-b.y);
+      const maxT = Math.max(...cluster.map(e=>e.mergeT||0));
+      const alpha = Math.min(1, maxT);
+      ctx.strokeStyle = `rgba(255,71,87,${alpha*0.8})`;
+      ctx.lineWidth = 2 + maxT*2;
+      ctx.setLineDash([6, 4]);
+      ctx.beginPath();
+      ctx.moveTo(cluster[0].x, cluster[0].y);
+      for (let i=1; i<cluster.length; i++) ctx.lineTo(cluster[i].x, cluster[i].y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  }
+
+  // 敵
+  for (const e of state.enemies) {
+    // ボーナス: 金色のオーラ + キラキラ
+    if (e.bonus) {
+      const pulse = 1 + Math.sin(state.time*8)*0.2;
+      ctx.fillStyle = `rgba(255,209,102,${0.3*pulse})`;
+      ctx.beginPath(); ctx.arc(e.x, e.y, e.r*1.6*pulse, 0, Math.PI*2); ctx.fill();
+      if (Math.random() < 0.3) {
+        const a = Math.random()*Math.PI*2, d = e.r*(0.8+Math.random()*0.6);
+        state.particles.push({ x:e.x+Math.cos(a)*d, y:e.y+Math.sin(a)*d, vx:Math.cos(a)*30, vy:Math.sin(a)*30, life:0.4, color:'#fff', r:2 });
+      }
+    }
+    // 影
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.beginPath(); ctx.ellipse(e.x, e.y+e.r*0.8, e.r*0.8, e.r*0.25, 0, 0, Math.PI*2); ctx.fill();
+    // 本体
+    const grad = ctx.createRadialGradient(e.x-e.r/3, e.y-e.r/3, 1, e.x, e.y, e.r);
+    if (e.bonus) {
+      grad.addColorStop(0, '#fffce0'); grad.addColorStop(0.3, '#ffd166'); grad.addColorStop(1, '#9a6c00');
+    } else if (e.merged) {
+      grad.addColorStop(0, '#fff'); grad.addColorStop(0.3, e.color); grad.addColorStop(1, '#1a0033');
+    } else {
+      grad.addColorStop(0, '#fff'); grad.addColorStop(0.3, e.color); grad.addColorStop(1, '#000');
+    }
+    ctx.fillStyle = grad;
+    ctx.beginPath(); ctx.arc(e.x, e.y, e.r, 0, Math.PI*2); ctx.fill();
+    // 顔
+    const eyeY = e.y - e.r*0.1;
+    const eyeOff = e.r*0.3;
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.ellipse(e.x-eyeOff, eyeY, e.r*0.19, e.r*0.23, 0, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(e.x+eyeOff, eyeY, e.r*0.19, e.r*0.23, 0, 0, Math.PI*2); ctx.fill();
+    const blink = Math.sin(state.time*3 + e.wobble) > 0.95 ? 0 : 1;
+    if (blink) {
+      ctx.fillStyle = '#000';
+      const lookX = Math.sin(e.wobble*0.5) * e.r*0.04;
+      ctx.beginPath(); ctx.arc(e.x-eyeOff+lookX, eyeY, e.r*0.10, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(e.x+eyeOff+lookX, eyeY, e.r*0.10, 0, Math.PI*2); ctx.fill();
+    } else {
+      ctx.strokeStyle = '#000'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(e.x-eyeOff-e.r*0.1, eyeY); ctx.lineTo(e.x-eyeOff+e.r*0.1, eyeY); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(e.x+eyeOff-e.r*0.1, eyeY); ctx.lineTo(e.x+eyeOff+e.r*0.1, eyeY); ctx.stroke();
+    }
+    // 口
+    ctx.strokeStyle = '#000'; ctx.lineWidth = 2; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.arc(e.x, e.y + e.r*0.3, e.r*0.2, 0.15, Math.PI-0.15); ctx.stroke();
+
+    // タイプ別装飾
+    if (e.type === 'shooter') {
+      // 砲身
+      ctx.fillStyle = '#000';
+      ctx.fillRect(e.x-2.5, e.y - e.r - 7, 5, 9);
+      ctx.fillStyle = '#ff4757';
+      ctx.beginPath(); ctx.arc(e.x, e.y - e.r - 7, 3.5, 0, Math.PI*2); ctx.fill();
+    } else if (e.type === 'sprinter') {
+      // 速度線
+      ctx.strokeStyle = `rgba(255,255,255,0.55)`; ctx.lineWidth = 2;
+      for (let i=0; i<3; i++) {
+        ctx.beginPath();
+        ctx.moveTo(e.x - e.r - 4 - i*4, e.y - 6 + i*5);
+        ctx.lineTo(e.x - e.r - 1 - i*4, e.y - 6 + i*5);
+        ctx.stroke();
+      }
+    } else if (e.type === 'splitter') {
+      // ヒビ
+      ctx.strokeStyle = '#000'; ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(e.x - e.r*0.1, e.y - e.r*0.7);
+      ctx.lineTo(e.x - e.r*0.25, e.y - e.r*0.1);
+      ctx.lineTo(e.x + e.r*0.15, e.y + e.r*0.4);
+      ctx.lineTo(e.x - e.r*0.05, e.y + e.r*0.7);
+      ctx.stroke();
+    }
+    // シールド円弧
+    if (e.shielded) {
+      ctx.strokeStyle = `rgba(116,196,255,0.85)`; ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.arc(e.x, e.y, e.r * 1.35, -Math.PI*0.75, -Math.PI*0.25, false);
+      ctx.stroke();
+      ctx.strokeStyle = `rgba(255,255,255,0.6)`; ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(e.x, e.y, e.r * 1.35, -Math.PI*0.75, -Math.PI*0.25, false);
+      ctx.stroke();
+    }
+    // スロー時は青オーラ
+    if (e.slowT > 0) {
+      ctx.fillStyle = `rgba(116,196,255,${0.3*e.slowT})`;
+      ctx.beginPath(); ctx.arc(e.x, e.y, e.r*1.15, 0, Math.PI*2); ctx.fill();
+    }
+    // 凍結時は氷のかぶりもの
+    if (e.frozenT > 0) {
+      ctx.fillStyle = 'rgba(140,210,255,0.45)';
+      ctx.beginPath(); ctx.arc(e.x, e.y, e.r*1.2, 0, Math.PI*2); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 2;
+      for (let k=0; k<6; k++) {
+        const a = k*Math.PI/3 + state.time*1.5;
+        ctx.beginPath();
+        ctx.moveTo(e.x + Math.cos(a)*e.r*0.4, e.y + Math.sin(a)*e.r*0.4);
+        ctx.lineTo(e.x + Math.cos(a)*e.r*1.2, e.y + Math.sin(a)*e.r*1.2);
+        ctx.stroke();
+      }
+    }
+    // 合体待機の脈動
+    if (e.mergeT && e.mergeT > 0) {
+      ctx.fillStyle = `rgba(255,71,87,${0.3*Math.sin(state.time*15)+0.3})`;
+      ctx.beginPath(); ctx.arc(e.x, e.y, e.r, 0, Math.PI*2); ctx.fill();
+    }
+    // 合体敵のトゲ
+    if (e.merged) {
+      ctx.fillStyle = '#9b59b6';
+      for (let i=0; i<8; i++) {
+        const ang = i*Math.PI/4 + e.wobble*0.3;
+        const x1 = e.x + Math.cos(ang)*e.r;
+        const y1 = e.y + Math.sin(ang)*e.r;
+        const x2 = e.x + Math.cos(ang)*(e.r+8);
+        const y2 = e.y + Math.sin(ang)*(e.r+8);
+        ctx.beginPath();
+        ctx.moveTo(x1-3,y1-3); ctx.lineTo(x2,y2); ctx.lineTo(x1+3,y1+3); ctx.closePath(); ctx.fill();
+      }
+    }
+    // ヒットフラッシュ
+    if (e.hitFlash > 0) {
+      ctx.fillStyle = `rgba(255,255,255,${e.hitFlash*8})`;
+      ctx.beginPath(); ctx.arc(e.x, e.y, e.r, 0, Math.PI*2); ctx.fill();
+    }
+    // HPバー
+    if (e.hp < e.maxHp) {
+      const w = e.r*2;
+      ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(e.x-w/2, e.y-e.r-8, w, 4);
+      ctx.fillStyle = '#ff4757'; ctx.fillRect(e.x-w/2, e.y-e.r-8, w*(e.hp/e.maxHp), 4);
+    }
+  }
+
+  // 敵の弾
+  for (const b of state.enemyBullets) {
+    ctx.fillStyle = b.color || '#a29bfe';
+    ctx.shadowColor = '#000'; ctx.shadowBlur = 6;
+    ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI*2); ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(b.x, b.y, b.r*0.4, 0, Math.PI*2); ctx.fill();
+  }
+
+  // 弾
+  for (const b of state.bullets) {
+    if (b.plane) {
+      ctx.save();
+      ctx.translate(b.x, b.y);
+      ctx.rotate(Math.atan2(b.vy, b.vx) + Math.PI/2);
+      ctx.shadowColor = '#fff'; ctx.shadowBlur = 8;
+      ctx.fillStyle = b.color || '#fff';
+      ctx.strokeStyle = '#888'; ctx.lineWidth = 1;
+      const s = b.r * 1.3;
+      ctx.beginPath();
+      ctx.moveTo(0, -s);
+      ctx.lineTo(s*0.85, s*0.7);
+      ctx.lineTo(0, s*0.35);
+      ctx.lineTo(-s*0.85, s*0.7);
+      ctx.closePath();
+      ctx.fill(); ctx.stroke();
+      ctx.strokeStyle = '#bbb';
+      ctx.beginPath(); ctx.moveTo(0, -s); ctx.lineTo(0, s*0.35); ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.restore();
+      continue;
+    }
+    if (b.explode) {
+      ctx.save();
+      ctx.translate(b.x, b.y);
+      ctx.rotate(state.time * 4 + b.x * 0.05);
+      ctx.shadowColor = b.glow || '#ffce6e'; ctx.shadowBlur = 10;
+      ctx.fillStyle = b.color;
+      ctx.beginPath(); ctx.arc(0, 0, b.r, 0, Math.PI*2); ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = '#27ae60';
+      ctx.fillRect(-1.5, -b.r-3, 3, 5);
+      ctx.fillStyle = '#fff5b8';
+      ctx.beginPath(); ctx.arc(-b.r*0.35, -b.r*0.35, b.r*0.3, 0, Math.PI*2); ctx.fill();
+      ctx.restore();
+      continue;
+    }
+    ctx.fillStyle = b.color || '#4cc9f0';
+    ctx.shadowColor = b.glow || b.color || '#4cc9f0'; ctx.shadowBlur = 12;
+    ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI*2); ctx.fill();
+    if (b.boom) {
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+      ctx.beginPath();
+      const ang = state.time*15 + b.x*0.1;
+      ctx.moveTo(b.x+Math.cos(ang)*b.r*1.5, b.y+Math.sin(ang)*b.r*1.5);
+      ctx.lineTo(b.x-Math.cos(ang)*b.r*1.5, b.y-Math.sin(ang)*b.r*1.5);
+      ctx.stroke();
+    }
+    ctx.shadowBlur = 0;
+  }
+
+  // ドローン
+  for (const d of state.drones) {
+    const dx = Math.cos(d.angle)*56, dy = Math.sin(d.angle)*56;
+    ctx.fillStyle = d.color;
+    ctx.beginPath(); ctx.arc(p.x+dx, p.y+dy, 6, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke();
+  }
+
+  // プレイヤー
+  ctx.save();
+  ctx.translate(p.x, p.y);
+  if (p.invul > 0 && Math.floor(p.invul*20)%2===0) ctx.globalAlpha = 0.4;
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.beginPath(); ctx.ellipse(0, PLAYER_SIZE*0.7, PLAYER_SIZE*0.7, PLAYER_SIZE*0.2, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#4cc9f0'; ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(0, -PLAYER_SIZE);
+  ctx.lineTo(PLAYER_SIZE*0.8, PLAYER_SIZE*0.6);
+  ctx.lineTo(0, PLAYER_SIZE*0.3);
+  ctx.lineTo(-PLAYER_SIZE*0.8, PLAYER_SIZE*0.6);
+  ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.arc(0,0,4,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+
+  // パーティクル & ダメージ数値
+  for (const pa of state.particles) {
+    if (pa.txt) {
+      const a = Math.min(1, pa.life*1.5);
+      ctx.globalAlpha = a;
+      ctx.font = pa.big ? 'bold 18px sans-serif' : 'bold 13px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.lineWidth = 3; ctx.strokeStyle = '#000';
+      ctx.strokeText(pa.txt, pa.x, pa.y);
+      ctx.fillStyle = pa.color;
+      ctx.fillText(pa.txt, pa.x, pa.y);
+    } else {
+      ctx.globalAlpha = Math.max(0, pa.life*2);
+      ctx.fillStyle = pa.color;
+      ctx.beginPath(); ctx.arc(pa.x, pa.y, pa.r, 0, Math.PI*2); ctx.fill();
+    }
+  }
+  ctx.globalAlpha = 1;
+
+  // 装備ドロップ（目立つ宝箱）
+  if (state.player) {
+    for (const ed of state.equipDrops) {
+      const eq = ed.eq;
+      const col = RARITY[eq.rarity].color;
+      const t = state.time*3 + ed.x*0.05;
+      const yOff = Math.sin(t)*4;
+      const cx = ed.x, cy = ed.y + yOff;
+      // 大きな光輪（脈動）
+      const pulse = 1 + Math.sin(state.time*5)*0.2;
+      ctx.fillStyle = col + '33';
+      ctx.beginPath(); ctx.arc(cx, cy, 32*pulse, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = col + '66';
+      ctx.beginPath(); ctx.arc(cx, cy, 22*pulse, 0, Math.PI*2); ctx.fill();
+      // 宝箱の本体（角丸の長方形）
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.shadowColor = col; ctx.shadowBlur = 18;
+      // 影
+      ctx.fillStyle = 'rgba(0,0,0,0.4)';
+      ctx.beginPath();
+      ctx.ellipse(0, 14, 16, 4, 0, 0, Math.PI*2); ctx.fill();
+      // 箱
+      ctx.fillStyle = col;
+      ctx.fillRect(-14, -10, 28, 20);
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(-14, -10, 28, 4);
+      ctx.fillStyle = '#0008';
+      ctx.fillRect(-3, -10, 6, 20);
+      ctx.fillStyle = col;
+      ctx.fillRect(-2, -2, 4, 4);
+      // 縁取り
+      ctx.strokeStyle = '#000'; ctx.lineWidth = 2;
+      ctx.strokeRect(-14, -10, 28, 20);
+      ctx.restore();
+
+      // ✨ スパークル（時々）
+      if (Math.random() < 0.15) {
+        const a = Math.random()*Math.PI*2, d = 28 + Math.random()*10;
+        state.particles.push({ x:cx+Math.cos(a)*d, y:cy+Math.sin(a)*d, vx:0, vy:-30, life:0.5, color:col, r:2 });
+      }
+
+      // レアリティ名（ピル状ラベル）
+      ctx.font = 'bold 10px sans-serif';
+      const labelText = RARITY[eq.rarity].name;
+      const labelW = ctx.measureText(labelText).width + 12;
+      const labelY = cy - 26;
+      ctx.fillStyle = '#000d';
+      ctx.fillRect(cx - labelW/2, labelY - 8, labelW, 14);
+      ctx.fillStyle = col;
+      ctx.fillRect(cx - labelW/2, labelY - 8, labelW, 14);
+      ctx.fillStyle = '#000';
+      ctx.fillRect(cx - labelW/2 + 1, labelY - 7, labelW - 2, 12);
+      ctx.fillStyle = col;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(labelText, cx, labelY);
+
+      // 拾える距離なら矢印
+      const dx2 = state.player.x - cx, dy2 = state.player.y - cy;
+      if (dx2*dx2 + dy2*dy2 < (state.player.pickupRange*1.0)**2) {
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 14px sans-serif';
+        ctx.fillText('▼ 拾う', cx, cy + 26 + Math.sin(state.time*8)*2);
+      }
+    }
+  }
+
+  // ボスのHPバー（画面上）
+  const boss = state.enemies.find(e => e.miniBoss);
+  if (boss) {
+    const bw = W - 60;
+    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    ctx.fillRect(30, 75, bw, 8);
+    ctx.fillStyle = '#e84393';
+    ctx.fillRect(30, 75, bw * (boss.hp / boss.maxHp), 8);
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 1;
+    ctx.strokeRect(30, 75, bw, 8);
+    ctx.font = 'bold 11px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#fff';
+    ctx.fillText('BOSS', W/2, 72);
+  }
+}
+
+// ---- 装備をインベントリに追加（ゲーム中の戦利品として）----
+const INV_MAX = 60;
+function addToInventory(eq) {
+  state.inventory.push(eq);
+  // 上限超過時は最古を捨てる
+  while (state.inventory.length > INV_MAX) state.inventory.shift();
+  saveMeta();
+  // 取得通知（フロート）
+  if (state.player) {
+    state.particles.push({
+      x: state.player.x, y: state.player.y - 50,
+      vx: 0, vy: -40,
+      life: 1.6,
+      color: RARITY[eq.rarity].color,
+      r: 0,
+      txt: '+ ' + eq.name,
+      big: true,
+    });
+  }
+}
+
+// ---- 装備管理画面（タイトルから） ----
+function showInventory() {
+  const panel = document.getElementById('panel');
+  let html = '<h2>🎒 装備管理</h2>';
+  html += '<p style="font-size:11px;opacity:.7">タイトルでのみ付け替え可能。スロットごとに装備すると戦闘で効果発揮</p>';
+
+  for (const slot of EQUIP_SLOTS) {
+    html += '<h3 style="margin-top:12px">' + SLOT_LABELS[slot] + '</h3>';
+    const cur = state.equipped[slot];
+    if (cur) {
+      const rar = RARITY[cur.rarity];
+      html += '<div style="border:3px solid ' + rar.color + ';border-radius:8px;padding:8px;margin:5px 0;background:rgba(0,0,0,0.3);box-shadow:0 0 10px ' + rar.color + '55">';
+      html += '<div style="font-weight:bold;color:' + rar.color + '">⚙ 装備中: ' + cur.name + '</div>';
+      html += '<div style="font-size:11px;line-height:1.5;margin:4px 0">' + cur.stats.map(s => statText(s)).join(' / ') + '</div>';
+      html += '<button class="equip-act" data-act="unequip" data-slot="' + slot + '" style="background:#666;color:#fff;border:none;padding:5px 12px;border-radius:5px;font-size:11px;cursor:pointer">外す</button>';
+      html += '</div>';
+    } else {
+      html += '<div style="font-size:11px;opacity:.55;margin:5px 0;padding:6px;border:1px dashed #555;border-radius:6px">未装備</div>';
+    }
+
+    const items = state.inventory.map((eq, idx) => ({...eq, _idx: idx})).filter(it => it.slot === slot);
+    items.sort((a, b) => RARITY[a.rarity].weight - RARITY[b.rarity].weight);
+
+    if (items.length > 0) {
+      html += '<div style="font-size:10px;opacity:.7;margin-top:6px">所持: ' + items.length + '</div>';
+      for (const item of items) {
+        const rar = RARITY[item.rarity];
+        html += '<div style="border:2px solid ' + rar.color + ';border-radius:6px;padding:6px;margin:3px 0;background:rgba(0,0,0,0.25);display:flex;justify-content:space-between;align-items:center;gap:6px">';
+        html += '<div style="flex:1;min-width:0">';
+        html += '<div style="font-size:12px;font-weight:bold;color:' + rar.color + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + item.name + '</div>';
+        html += '<div style="font-size:10px;line-height:1.4;opacity:.85">' + item.stats.map(s => statText(s)).join(' / ') + '</div>';
+        html += '</div>';
+        html += '<div style="display:flex;flex-direction:column;gap:3px">';
+        html += '<button class="equip-act" data-act="equip" data-idx="' + item._idx + '" style="background:#4cc9f0;color:#000;border:none;padding:4px 8px;border-radius:4px;font-size:10px;font-weight:bold;cursor:pointer">装備</button>';
+        html += '<button class="equip-act" data-act="discard" data-idx="' + item._idx + '" style="background:#444;color:#ff6b6b;border:1px solid #ff6b6b;padding:3px 8px;border-radius:4px;font-size:9px;cursor:pointer">捨</button>';
+        html += '</div></div>';
+      }
+    }
+  }
+
+  html += '<button class="start-btn" id="inv-back" style="margin-top:12px">戻る</button>';
+  panel.innerHTML = html;
+  document.getElementById('overlay').classList.add('show');
+
+  panel.querySelectorAll('.equip-act').forEach(btn => {
+    btn.onclick = () => {
+      const act = btn.dataset.act;
+      if (act === 'unequip') {
+        const slot = btn.dataset.slot;
+        if (state.equipped[slot]) {
+          state.inventory.push(state.equipped[slot]);
+          state.equipped[slot] = null;
+        }
+        SFX.equipChange();
+      } else if (act === 'equip') {
+        const idx = +btn.dataset.idx;
+        const item = state.inventory[idx];
+        if (!item) return;
+        state.inventory.splice(idx, 1);
+        const old = state.equipped[item.slot];
+        if (old) state.inventory.push(old);
+        state.equipped[item.slot] = item;
+        SFX.equipChange();
+      } else if (act === 'discard') {
+        if (!confirm('この装備を捨てますか？')) return;
+        state.inventory.splice(+btn.dataset.idx, 1);
+      }
+      saveMeta();
+      showInventory();
+    };
+  });
+  document.getElementById('inv-back').onclick = showTitle;
+}
+
+function spawnMiniBoss() {
+  const t = state.time;
+  const lane = Math.floor(Math.random()*3);
+  const tier = Math.min(5, 1+Math.floor(t/40));
+  const hp = Math.floor(220 + tier*120 + t*1.6);
+  state.enemies.push({
+    type:'normal', lane, x:LANE_W*(lane+0.5), y:-50,
+    r: 32 + tier*2,
+    hp, maxHp: hp,
+    speed: 32 + tier*5,
+    color: '#e84393',
+    dmg: 22 + tier*5, xp: 18 + tier*3, gold: 22 + tier*5,
+    wobble: 0, hitFlash: 0, slowT: 0,
+    miniBoss: true,
+  });
+  SFX.bossSpawn();
+}
+
+showTitle();
+requestAnimationFrame(loop);
+
+// ---- PWA Service Worker 登録 ----
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
+</script>
+</body>
+</html>
