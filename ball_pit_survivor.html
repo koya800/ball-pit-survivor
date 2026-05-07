@@ -484,6 +484,7 @@ function createPlayer() {
     invul:0,
     weapons:{ bolt:{lvl:1, cd:0, evo:false} },
     passivesOwned:new Set(),
+    passiveStacks:{},
   };
 }
 function applyEquippedToPlayer(p) {
@@ -972,6 +973,7 @@ const PASSIVES = {
 // ---- Equipment (ローグライク装備) ----
 const EQUIP_SLOTS = ['weapon', 'armor', 'accessory'];
 const SLOT_LABELS = { weapon:'⚔ 武器補助', armor:'🛡 防具', accessory:'💍 装飾品' };
+const SLOT_ICONS  = { weapon:'⚔', armor:'🛡', accessory:'💍' };
 
 // stat定義: kind は 'mul'(乗算%), 'add'(加算), 'addhp'(HP+max同時)
 const STAT_DEFS = {
@@ -1476,8 +1478,11 @@ function rollUpgradeChoices() {
   }
   for (const k of upgradable) weaponPool.push({ kind:'upWeapon', key:k });
 
-  // パッシブプール
-  const passivePool = Object.keys(PASSIVES).map(k => ({ kind:'passive', key:k }));
+  // パッシブプール（同種3スタック上限）
+  const PASSIVE_MAX_STACKS = 3;
+  const passivePool = Object.keys(PASSIVES)
+    .filter(k => (p.passiveStacks[k]||0) < PASSIVE_MAX_STACKS)
+    .map(k => ({ kind:'passive', key:k }));
 
   weaponPool.sort(() => Math.random() - 0.5);
   passivePool.sort(() => Math.random() - 0.5);
@@ -1514,7 +1519,8 @@ function showLevelUp() {
       return `<button class="upgrade-btn" data-i="${i}"><span style="font-size:18px">${w.icon}</span> ${w.name} Lv.${cur}→${cur+1}<span class="desc">${txt}</span></button>`;
     } else {
       const d = PASSIVES[c.key];
-      return `<button class="upgrade-btn" data-i="${i}"><span style="font-size:18px">${d.icon}</span> ${d.name}<span class="desc">${d.desc}</span></button>`;
+      const cur = state.player.passiveStacks[c.key] || 0;
+      return `<button class="upgrade-btn" data-i="${i}"><span style="font-size:18px">${d.icon}</span> ${d.name} (${cur}→${cur+1}/3)<span class="desc">${d.desc}</span></button>`;
     }
   }).join('');
   panel.innerHTML = `<h2>LEVEL UP!  Lv.${state.level}</h2><p>強化を1つ選択</p>${html}`;
@@ -1524,18 +1530,18 @@ function showLevelUp() {
       const p = state.player;
       if (c.kind === 'evolve') {
         delete p.weapons[c.evo.base];
-        p.weapons[c.evo.result] = { lvl:1, cd:0, evo:true, justGot:true };
+        p.weapons[c.evo.result] = { lvl:1, cd:0, evo:true };
         SFX.evolve();
       } else if (c.kind === 'newWeapon') {
-        p.weapons[c.key] = { lvl:1, cd:0, evo:false, justGot:true };
+        p.weapons[c.key] = { lvl:1, cd:0, evo:false };
         SFX.gameStart();
       } else if (c.kind === 'upWeapon') {
         p.weapons[c.key].lvl++;
-        p.weapons[c.key].justGot = false;
         SFX.shopBuy();
       } else {
         PASSIVES[c.key].apply(p);
         p.passivesOwned.add(c.key);
+        p.passiveStacks[c.key] = (p.passiveStacks[c.key]||0) + 1;
         SFX.equipPickup();
       }
       document.getElementById('overlay').classList.remove('show');
@@ -1553,8 +1559,7 @@ function renderWeaponBar() {
     const w = WEAPON_DEFS[k]; const wd = state.player.weapons[k];
     const div = document.createElement('div');
     div.className = 'wslot' + (wd.evo?' evolved':'');
-    const newTag = wd.justGot ? '<span class="new-tag">NEW</span>' : '';
-    div.innerHTML = `${newTag}${w.icon}<span class="lvl">${wd.lvl}</span>`;
+    div.innerHTML = `${w.icon}<span class="lvl">${wd.lvl}</span>`;
     bar.appendChild(div);
   }
 }
@@ -2628,6 +2633,7 @@ function render() {
 // ---- 装備をインベントリに追加（ゲーム中の戦利品として）----
 const INV_MAX = 60;
 function addToInventory(eq) {
+  eq._isNew = true;  // 装備画面で NEW バッジ表示
   state.inventory.push(eq);
   // 上限超過時は最古を捨てる
   while (state.inventory.length > INV_MAX) state.inventory.shift();
@@ -2655,10 +2661,11 @@ function showInventory() {
   for (const slot of EQUIP_SLOTS) {
     html += '<h3 style="margin-top:12px">' + SLOT_LABELS[slot] + '</h3>';
     const cur = state.equipped[slot];
+    const slotIcon = SLOT_ICONS[slot] || '';
     if (cur) {
       const rar = RARITY[cur.rarity];
       html += '<div style="border:3px solid ' + rar.color + ';border-radius:8px;padding:10px;margin:5px 0;background:rgba(0,0,0,0.3);box-shadow:0 0 10px ' + rar.color + '55">';
-      html += '<div style="font-weight:bold;color:' + rar.color + ';font-size:13px">⚙ 装備中: ' + cur.name + '</div>';
+      html += '<div style="font-weight:bold;color:' + rar.color + ';font-size:13px">⚙ 装備中: <span style="font-size:18px;margin:0 4px">' + slotIcon + '</span>' + cur.name + '</div>';
       html += '<div style="font-size:11px;line-height:1.5;margin:4px 0 8px">' + cur.stats.map(s => statText(s)).join(' / ') + '</div>';
       html += '<button class="equip-act" data-act="unequip" data-slot="' + slot + '" style="display:block;width:100%;background:#666;color:#fff;border:none;padding:10px;border-radius:6px;font-size:13px;font-weight:bold;cursor:pointer">外す</button>';
       html += '</div>';
@@ -2673,8 +2680,9 @@ function showInventory() {
       html += '<div style="font-size:10px;opacity:.7;margin-top:6px">所持: ' + items.length + '</div>';
       for (const item of items) {
         const rar = RARITY[item.rarity];
-        html += '<div style="border:2px solid ' + rar.color + ';border-radius:6px;padding:8px;margin:5px 0;background:rgba(0,0,0,0.25)">';
-        html += '<div style="font-size:13px;font-weight:bold;color:' + rar.color + ';margin-bottom:3px">' + item.name + '</div>';
+        const newBadge = item._isNew ? '<span style="display:inline-block;background:#ff4757;color:#fff;font-size:9px;font-weight:bold;padding:1px 5px;border-radius:6px;margin-right:5px;box-shadow:0 0 6px rgba(255,71,87,0.7);vertical-align:middle">NEW</span>' : '';
+        html += '<div style="border:2px solid ' + rar.color + ';border-radius:6px;padding:8px;margin:5px 0;background:rgba(0,0,0,0.25)' + (item._isNew ? ';box-shadow:0 0 8px rgba(255,71,87,0.4)' : '') + '">';
+        html += '<div style="font-size:13px;font-weight:bold;color:' + rar.color + ';margin-bottom:3px">' + newBadge + '<span style="font-size:18px;margin-right:4px">' + slotIcon + '</span>' + item.name + '</div>';
         html += '<div style="font-size:11px;line-height:1.4;opacity:.85;margin-bottom:8px">' + item.stats.map(s => statText(s)).join(' / ') + '</div>';
         html += '<div style="display:flex;gap:6px">';
         html += '<button class="equip-act" data-act="equip" data-idx="' + item._idx + '" style="flex:1;background:#4cc9f0;color:#000;border:none;padding:10px;border-radius:6px;font-size:13px;font-weight:bold;cursor:pointer">装備する</button>';
@@ -2702,6 +2710,7 @@ function showInventory() {
         const idx = +btn.dataset.idx;
         const item = state.inventory[idx];
         if (!item) return;
+        item._isNew = false;  // 装備したら NEW を外す
         state.inventory.splice(idx, 1);
         const old = state.equipped[item.slot];
         if (old) state.inventory.push(old);
