@@ -286,6 +286,7 @@ const SFX = {
   gameover:() => { tone(440, 0.2, 'sawtooth', 0.06, -200); setTimeout(()=>tone(330, 0.2, 'sawtooth', 0.06, -150), 200); setTimeout(()=>tone(220, 0.4, 'sawtooth', 0.06, -100), 400); },
   victory:() => { for (let i=0; i<6; i++) setTimeout(()=>tone(523*Math.pow(1.2,i), 0.1, 'square', 0.05), i*80); setTimeout(()=>tone(2093, 0.4, 'square', 0.06), 480); },
   bossSpawn: () => { if (!audioCtx) return; const t = audioCtx.currentTime; const o = audioCtx.createOscillator(); o.type='sawtooth'; o.frequency.setValueAtTime(220,t); o.frequency.exponentialRampToValueAtTime(50,t+0.7); const g=audioCtx.createGain(); g.gain.setValueAtTime(0.09,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.8); o.connect(g).connect(audioCtx.destination); o.start(t); o.stop(t+0.8); noise(0.4, 0.05, 200); },
+  ghostSpawn: () => { if (!audioCtx) return; const t = audioCtx.currentTime; const o = audioCtx.createOscillator(); o.type='sine'; o.frequency.setValueAtTime(620,t); o.frequency.exponentialRampToValueAtTime(280,t+0.55); const g=audioCtx.createGain(); g.gain.setValueAtTime(0.022,t); g.gain.exponentialRampToValueAtTime(0.0005,t+0.6); o.connect(g).connect(audioCtx.destination); o.start(t); o.stop(t+0.6); },
   bossKill: () => { noise(0.3, 0.08, 200); for (let i=0; i<5; i++) setTimeout(()=>tone(330*Math.pow(1.18,i), 0.12, 'square', 0.06), i*60); setTimeout(()=>noise(0.4, 0.06, 800), 280); },
   equipDrop: () => { [880, 1108, 1318].forEach((f,i) => setTimeout(()=>tone(f, 0.4, 'sine', 0.04, 0), i*70)); },
   equipPickup: () => { tone(660, 0.05, 'sine', 0.04); setTimeout(()=>tone(880, 0.06, 'sine', 0.04), 40); setTimeout(()=>tone(1320, 0.12, 'sine', 0.045), 90); },
@@ -2761,7 +2762,7 @@ function spawnGhost() {
     dmg: 28 + tier*4, xp: 8 + tier*2, gold: 12 + tier*3,
     wobble: Math.random()*Math.PI*2, hitFlash: 0, slowT: 0,
   });
-  SFX.bossSpawn();
+  SFX.ghostSpawn();
 }
 
 showTitle();
