@@ -511,12 +511,12 @@ const WEAPON_DEFS = {
     lvlText: ['','進化: 3レーン同時雷','攻撃力 +6','攻撃力 +6','連射速度 +15%','攻撃力 +8','貫通 +1','攻撃力 +10','連射速度 +20%'],
     update: (p, w, dt) => {
       const lvl = w.lvl;
-      const intMul = lvl>=8 ? 0.65 : lvl>=4 ? 0.85 : 1.0;
-      const interval = (0.7*intMul) / p.fireRateMul;
+      const intMul = lvl>=8 ? 0.70 : lvl>=4 ? 0.88 : 1.0;
+      const interval = (0.95*intMul) / p.fireRateMul;
       w.cd -= dt;
       if (w.cd <= 0) {
         w.cd = interval;
-        const dmg = Math.ceil((22 + (lvl>=2?6:0) + (lvl>=3?6:0) + (lvl>=5?8:0) + (lvl>=7?10:0)) * p.atkMul);
+        const dmg = Math.ceil((17 + (lvl>=2?6:0) + (lvl>=3?6:0) + (lvl>=5?8:0) + (lvl>=7?10:0)) * p.atkMul);
         const pi = p.pierce + 1 + (lvl>=6 ? 1 : 0);
         for (let l=0; l<3; l++) {
           state.bullets.push({ x:LANE_W*(l+0.5), y:p.y-PLAYER_SIZE, vx:0, vy:-700*p.bulletSpeedMul, r:8*p.bulletSize, dmg, pierce:pi, lane:l, color:'#fff', glow:'#4cc9f0' });
@@ -552,12 +552,12 @@ const WEAPON_DEFS = {
     lvlText: ['','進化: 8方向弾幕','攻撃力 +5','攻撃力 +5','弾数 +2（10方向）','攻撃力 +6','連射UP','攻撃力 +8','弾数 +2（12方向）'],
     update: (p, w, dt) => {
       const lvl = w.lvl;
-      const intMul = lvl>=6 ? 0.85 : 1.0;
+      const intMul = lvl>=6 ? 0.90 : 1.0;
       w.cd -= dt;
-      const interval = (0.9*intMul) / p.fireRateMul;
+      const interval = (1.05*intMul) / p.fireRateMul;
       if (w.cd <= 0) {
         w.cd = interval;
-        const dmg = Math.ceil((14 + (lvl>=2?5:0) + (lvl>=3?5:0) + (lvl>=5?6:0) + (lvl>=7?8:0)) * p.atkMul);
+        const dmg = Math.ceil((11 + (lvl>=2?5:0) + (lvl>=3?5:0) + (lvl>=5?6:0) + (lvl>=7?8:0)) * p.atkMul);
         const speed = 520*p.bulletSpeedMul;
         const n = lvl>=8 ? 12 : lvl>=4 ? 10 : 8;
         for (let i=0; i<n; i++) {
@@ -589,12 +589,12 @@ const WEAPON_DEFS = {
     lvlText: ['','進化: 全レーン同時光線','攻撃力 +14','攻撃力 +14','幅 +6','連射速度 +15%','攻撃力 +16','幅 +8','攻撃力 +20'],
     update: (p, w, dt) => {
       const lvl = w.lvl;
-      const intMul = lvl>=5 ? 0.85 : 1.0;
+      const intMul = lvl>=5 ? 0.90 : 1.0;
       w.cd -= dt;
-      const interval = (1.8*intMul) / p.fireRateMul;
+      const interval = (2.1*intMul) / p.fireRateMul;
       if (w.cd <= 0) {
         w.cd = interval;
-        const dmg = Math.ceil((42 + (lvl>=2?14:0) + (lvl>=3?14:0) + (lvl>=6?16:0) + (lvl>=8?20:0)) * p.atkMul);
+        const dmg = Math.ceil((34 + (lvl>=2?14:0) + (lvl>=3?14:0) + (lvl>=6?16:0) + (lvl>=8?20:0)) * p.atkMul);
         const width = 20 + (lvl>=4?6:0) + (lvl>=7?8:0);
         for (let l=0; l<3; l++) state.lasers.push({ lane:l, life:0.45, dmg, width, color:'#ffd166', applied:false });
       }
@@ -622,12 +622,12 @@ const WEAPON_DEFS = {
     lvlText: ['','進化: 3連発衝撃波','攻撃力 +10','範囲 +30','攻撃力 +10','連射速度 +15%','範囲 +30','攻撃力 +12','攻撃力 +14'],
     update: (p, w, dt) => {
       const lvl = w.lvl;
-      const intMul = lvl>=5 ? 0.85 : 1.0;
+      const intMul = lvl>=5 ? 0.90 : 1.0;
       w.cd -= dt;
-      const interval = (2.2*intMul) / p.fireRateMul;
+      const interval = (2.6*intMul) / p.fireRateMul;
       if (w.cd <= 0) {
         w.cd = interval;
-        const dmg = Math.ceil((26 + (lvl>=2?10:0) + (lvl>=4?10:0) + (lvl>=7?12:0) + (lvl>=8?14:0)) * p.atkMul);
+        const dmg = Math.ceil((20 + (lvl>=2?10:0) + (lvl>=4?10:0) + (lvl>=7?12:0) + (lvl>=8?14:0)) * p.atkMul);
         const maxR = 130 + (lvl>=3?30:0) + (lvl>=6?30:0);
         for (let i=0; i<3; i++) {
           setTimeout(() => {
@@ -679,19 +679,19 @@ const WEAPON_DEFS = {
   },
   guardian: { name:'ガーディアン', icon:'🪐', maxLvl:MAX_WLVL, evolved:true,
     intro: '追尾するドローン弾',
-    lvlText: ['','進化: 2機の追尾ドローン','攻撃力 +5','+1機（3機）','攻撃力 +5','連射速度 +15%','+1機（4機）','攻撃力 +7','+2機（6機）'],
+    lvlText: ['','進化: 2機の追尾ドローン','攻撃力 +5','+1機（3機）','攻撃力 +5','連射速度 +15%','+1機（4機）','攻撃力 +7','+1機（5機）'],
     update: (p, w, dt) => {
       const lvl = w.lvl;
-      const want = lvl>=8 ? 6 : lvl>=6 ? 4 : lvl>=3 ? 3 : 2;
+      const want = lvl>=8 ? 5 : lvl>=6 ? 4 : lvl>=3 ? 3 : 2;
       while (state.drones.length < want) state.drones.push({ angle:Math.random()*Math.PI*2, cd:0, color:'#ffd166' });
       while (state.drones.length > want) state.drones.pop();
-      const intMul = lvl>=5 ? 0.85 : 1.0;
+      const intMul = lvl>=5 ? 0.90 : 1.0;
       for (const d of state.drones) {
         d.color = '#ffd166';
         d.angle += dt * 2.2;
         d.cd -= dt;
         if (d.cd <= 0) {
-          d.cd = (0.45*intMul) / p.fireRateMul;
+          d.cd = (0.55*intMul) / p.fireRateMul;
           const dx = Math.cos(d.angle)*60, dy = Math.sin(d.angle)*60;
           let tgt = null, bd2 = 1e9;
           for (const e of state.enemies) {
@@ -736,14 +736,14 @@ const WEAPON_DEFS = {
     lvlText: ['','進化: 連鎖爆発地雷','爆風 +20','攻撃力 +15','爆風 +20','設置間隔 -15%','攻撃力 +15','連鎖距離UP','攻撃力 +20'],
     update: (p, w, dt) => {
       const lvl = w.lvl;
-      const intMul = lvl>=5 ? 0.85 : 1.0;
+      const intMul = lvl>=5 ? 0.90 : 1.0;
       w.cd -= dt;
-      const interval = (1.4*intMul) / p.fireRateMul;
+      const interval = (1.7*intMul) / p.fireRateMul;
       if (w.cd <= 0) {
         w.cd = interval;
-        const dmg = Math.ceil((42 + (lvl>=3?15:0) + (lvl>=6?15:0) + (lvl>=8?20:0)) * p.atkMul);
-        const blast = 90 + (lvl>=2?20:0) + (lvl>=4?20:0);
-        const chain = 2 + (lvl>=7?1:0);
+        const dmg = Math.ceil((32 + (lvl>=3?15:0) + (lvl>=6?15:0) + (lvl>=8?20:0)) * p.atkMul);
+        const blast = 80 + (lvl>=2?20:0) + (lvl>=4?20:0);
+        const chain = 1 + (lvl>=7?1:0);
         state.mines.push({ x:p.x+(Math.random()*40-20), y:p.y-40, r:12+lvl*1.5, life:8, dmg, armed:0.4, blast, chain });
       }
     }
@@ -770,12 +770,12 @@ const WEAPON_DEFS = {
     lvlText: ['','進化: 4方向投擲','攻撃力 +7','攻撃力 +7','連射速度 +15%','攻撃力 +9','+2方向（6方向）','攻撃力 +10','攻撃力 +12'],
     update: (p, w, dt) => {
       const lvl = w.lvl;
-      const intMul = lvl>=4 ? 0.85 : 1.0;
+      const intMul = lvl>=4 ? 0.90 : 1.0;
       w.cd -= dt;
-      const interval = (1.4*intMul) / p.fireRateMul;
+      const interval = (1.6*intMul) / p.fireRateMul;
       if (w.cd <= 0) {
         w.cd = interval;
-        const dmg = Math.ceil((18 + (lvl>=2?7:0) + (lvl>=3?7:0) + (lvl>=5?9:0) + (lvl>=7?10:0) + (lvl>=8?12:0)) * p.atkMul);
+        const dmg = Math.ceil((14 + (lvl>=2?7:0) + (lvl>=3?7:0) + (lvl>=5?9:0) + (lvl>=7?10:0) + (lvl>=8?12:0)) * p.atkMul);
         const sp = 460*p.bulletSpeedMul;
         const dirs = lvl>=6 ? [[0,-1],[Math.SQRT1_2,-Math.SQRT1_2],[1,0],[Math.SQRT1_2,Math.SQRT1_2],[0,1],[-1,0]] : [[0,-1],[1,0],[0,1],[-1,0]];
         for (const [dx,dy] of dirs) {
@@ -806,13 +806,13 @@ const WEAPON_DEFS = {
     lvlText: ['','進化: 3レーン火の壁','攻撃力 +3','持続時間 +0.4秒','攻撃力 +3','設置間隔 -15%','持続時間 +0.5秒','攻撃力 +5','攻撃力 +5'],
     update: (p, w, dt) => {
       const lvl = w.lvl;
-      const intMul = lvl>=5 ? 0.85 : 1.0;
+      const intMul = lvl>=5 ? 0.90 : 1.0;
       w.cd -= dt;
-      const interval = (3.0*intMul) / p.fireRateMul;
+      const interval = (3.4*intMul) / p.fireRateMul;
       if (w.cd <= 0) {
         w.cd = interval;
-        const dmg = Math.ceil((10 + (lvl>=2?3:0) + (lvl>=4?3:0) + (lvl>=7?5:0) + (lvl>=8?5:0)) * p.atkMul);
-        const life = 3.0 + (lvl>=3?0.4:0) + (lvl>=6?0.5:0);
+        const dmg = Math.ceil((7 + (lvl>=2?3:0) + (lvl>=4?3:0) + (lvl>=7?5:0) + (lvl>=8?5:0)) * p.atkMul);
+        const life = 2.5 + (lvl>=3?0.4:0) + (lvl>=6?0.5:0);
         state.firewalls.push({ lane:-1, y:p.y - 130, life, dmg, tickCd:0, lanes:[0,1,2] });
       }
     }
@@ -835,16 +835,16 @@ const WEAPON_DEFS = {
   },
   blizzard: { name:'ブリザード', icon:'🧊', maxLvl:MAX_WLVL, evolved:true,
     intro: '全レーンに氷弾の嵐',
-    lvlText: ['','進化: 凍結50%・全レーン','攻撃力 +5','凍結率 +10%（60%）','攻撃力 +5','凍結率 +15%（75%）','攻撃力 +6','凍結率 +20%（95%）','凍結時間延長'],
+    lvlText: ['','進化: 凍結40%・全レーン','攻撃力 +5','凍結率 +10%（50%）','攻撃力 +5','凍結率 +10%（60%）','攻撃力 +6','凍結率 +15%（75%）','凍結時間延長'],
     update: (p, w, dt) => {
       const lvl = w.lvl;
       w.cd -= dt;
-      const interval = (1.0 - (lvl-1)*0.05) / p.fireRateMul;
+      const interval = (1.2 - (lvl-1)*0.04) / p.fireRateMul;
       if (w.cd <= 0) {
         w.cd = interval;
-        const dmg = Math.ceil((14 + (lvl>=2?5:0) + (lvl>=4?5:0) + (lvl>=6?6:0)) * p.atkMul);
-        const freeze = 0.50 + (lvl>=3?0.10:0) + (lvl>=5?0.15:0) + (lvl>=7?0.20:0);
-        const slow = lvl>=8 ? 3.0 : 2.0;
+        const dmg = Math.ceil((11 + (lvl>=2?5:0) + (lvl>=4?5:0) + (lvl>=6?6:0)) * p.atkMul);
+        const freeze = 0.40 + (lvl>=3?0.10:0) + (lvl>=5?0.10:0) + (lvl>=7?0.15:0);
+        const slow = lvl>=8 ? 2.5 : 1.8;
         for (let l=0; l<3; l++) {
           state.bullets.push({ x:LANE_W*(l+0.5), y:p.y-PLAYER_SIZE, vx:0, vy:-560*p.bulletSpeedMul, r:7*p.bulletSize, dmg, pierce:p.pierce+1, lane:l, color:'#74c4ff', glow:'#fff', slow, freeze });
         }
@@ -870,15 +870,15 @@ const WEAPON_DEFS = {
   },
   paperstorm: { name:'ペーパーストーム', icon:'🌪✈', maxLvl:MAX_WLVL, evolved:true,
     intro: '3レーン全てに貫通紙飛行機',
-    lvlText: ['','進化: 3レーン貫通8','貫通 +3（11）','攻撃力 +6','貫通 +4（15）','攻撃力 +7','貫通 +6（21）','攻撃力 +8','貫通 +12（33）'],
+    lvlText: ['','進化: 3レーン貫通6','貫通 +2（8）','攻撃力 +6','貫通 +3（11）','攻撃力 +7','貫通 +4（15）','攻撃力 +8','貫通 +7（22）'],
     update: (p, w, dt) => {
       const lvl = w.lvl;
       w.cd -= dt;
-      const interval = 1.0 / p.fireRateMul;
+      const interval = 1.2 / p.fireRateMul;
       if (w.cd <= 0) {
         w.cd = interval;
-        const dmg = Math.ceil((18 + (lvl>=3?6:0) + (lvl>=5?7:0) + (lvl>=7?8:0)) * p.atkMul);
-        const pi = 8 + (lvl>=2?3:0) + (lvl>=4?4:0) + (lvl>=6?6:0) + (lvl>=8?12:0) + p.pierce;
+        const dmg = Math.ceil((14 + (lvl>=3?6:0) + (lvl>=5?7:0) + (lvl>=7?8:0)) * p.atkMul);
+        const pi = 6 + (lvl>=2?2:0) + (lvl>=4?3:0) + (lvl>=6?4:0) + (lvl>=8?7:0) + p.pierce;
         for (let l=0; l<3; l++) {
           state.bullets.push({ x:LANE_W*(l+0.5), y:p.y-PLAYER_SIZE, vx:0, vy:-580*p.bulletSpeedMul, r:9*p.bulletSize, dmg, pierce:pi, lane:l, color:'#ffffff', glow:'#fff', plane:true });
         }
@@ -909,12 +909,12 @@ const WEAPON_DEFS = {
     update: (p, w, dt) => {
       const lvl = w.lvl;
       w.cd -= dt;
-      const interval = 1.6 / p.fireRateMul;
+      const interval = 1.8 / p.fireRateMul;
       if (w.cd <= 0) {
         w.cd = interval;
-        const dmg = Math.ceil((14 + (lvl>=2?5:0) + (lvl>=5?6:0) + (lvl>=8?8:0)) * p.atkMul);
-        const splashDmg = Math.ceil((12 + (lvl>=3?5:0) + (lvl>=6?6:0)) * p.atkMul);
-        const splashR = 80 + (lvl>=4?15:0) + (lvl>=7?20:0);
+        const dmg = Math.ceil((11 + (lvl>=2?5:0) + (lvl>=5?6:0) + (lvl>=8?8:0)) * p.atkMul);
+        const splashDmg = Math.ceil((9 + (lvl>=3?5:0) + (lvl>=6?6:0)) * p.atkMul);
+        const splashR = 70 + (lvl>=4?15:0) + (lvl>=7?20:0);
         for (let l=0; l<3; l++) {
           state.bullets.push({ x:LANE_W*(l+0.5), y:p.y-PLAYER_SIZE, vx:0, vy:-460*p.bulletSpeedMul, r:11*p.bulletSize, dmg, pierce:0, lane:l, color:'#ff6b35', glow:'#ffd166', explode:true, splashDmg, splashR });
         }
@@ -1345,12 +1345,12 @@ function damageEnemy(e, dmg) {
     }
     if (e.miniBoss) SFX.bossKill(); else SFX.kill(e);
     // 装備ドロップ判定
-    let dropChance = 0.005;
+    let dropChance = 0.002;
     if (e.miniBoss) dropChance = 1.0;  // ボスは確実
-    else if (e.merged) dropChance = 0.65;
-    else if (e.bonus) dropChance = 0.32;
-    else if (e.shielded) dropChance = 0.10;
-    else if (e.type === 'splitter') dropChance = 0.10;
+    else if (e.merged) dropChance = 0.20;
+    else if (e.bonus) dropChance = 0.15;
+    else if (e.shielded) dropChance = 0.05;
+    else if (e.type === 'splitter') dropChance = 0.05;
     if (Math.random() < dropChance) {
       // 強い敵ほどレアリティの基礎が上がる
       let forceRarity = null;
