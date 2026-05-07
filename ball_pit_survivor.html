@@ -192,7 +192,7 @@
     <div class="stat goal">⏱ <span id="time">0</span>/300</div>
     <div class="stat">💀 <span id="kills">0</span></div>
     <div class="stat gold">💰 <span id="gold">0</span></div>
-    <div class="stat" id="escape-stat" style="background:rgba(60,0,0,0.7);border:1px solid #ff6b6b;color:#ff8a8a;display:none">🏃 <span id="escapes">0</span></div>
+    <div class="stat" id="escape-stat" style="background:rgba(40,40,80,0.7);border:1px solid #74c4ff;color:#a8d4ff;display:none">👻 next <span id="escapes">0</span></div>
   </div>
   <div id="hpbar-wrap"><div id="hpbar"></div></div>
   <div id="xpbar-wrap"><div id="xpbar"></div></div>
@@ -1098,15 +1098,10 @@ function statText(stat) {
 }
 
 // ---- Enemy ----
-// 逃した敵が多いほど次に湧く敵が強くなる（HP/ダメ倍率、+5%/逃し、最大+200%）
-function rageMul() {
-  return 1 + Math.min(2.0, (state.escapeCount||0) * 0.05);
-}
 function spawnEnemy(lane, typeOverride) {
   const t = state.time;
   const tier = Math.min(5, 1 + Math.floor(t / 40));   // 40秒ごとに段階UP
   const tBonus = (t > 130 ? (t-130) * 0.4 : 0);
-  const rm = rageMul();
 
   // タイプ抽選（少し早めに多様化）
   let type = typeOverride;
@@ -1195,11 +1190,6 @@ function spawnEnemy(lane, typeOverride) {
         splits: 2,
       });
       break;
-  }
-  // 逃した敵が多いと敵が強化される（rage multiplier）
-  if (rm > 1) {
-    e.hp = Math.ceil(e.hp * rm);
-    e.dmg = Math.ceil(e.dmg * rm);
   }
   e.maxHp = e.hp;
   state.enemies.push(e);
@@ -1719,7 +1709,9 @@ function updateHUD() {
   const escEl = document.getElementById('escape-stat');
   if (esc > 0) {
     escEl.style.display = 'block';
-    document.getElementById('escapes').textContent = esc;
+    // 次のゴースト発動まで残り何匹か
+    const remain = GHOST_THRESHOLD - (esc % GHOST_THRESHOLD);
+    document.getElementById('escapes').textContent = remain === GHOST_THRESHOLD ? GHOST_THRESHOLD : remain;
   } else {
     escEl.style.display = 'none';
   }
@@ -1983,9 +1975,18 @@ function update(dt) {
       spawnParticles(e.x, e.y, e.color, 10);
       continue;
     }
+    if (e.type === 'ghost' && e.y < -e.r-10) {
+      // ゴーストが画面上方へ消える: ペナルティ無し
+      state.enemies.splice(i,1);
+      continue;
+    }
     if (e.y > H+e.r+10) {
-      // 逃した敵カウント（ボスは別枠なのでカウントしない）
-      if (!e.miniBoss) state.escapeCount = (state.escapeCount||0) + 1;
+      // 逃した敵カウント（ボスとゴーストはカウント外）
+      if (!e.miniBoss && e.type !== 'ghost') {
+        state.escapeCount = (state.escapeCount||0) + 1;
+        // 4匹逃すごとにゴーストが下から逆襲
+        if (state.escapeCount % GHOST_THRESHOLD === 0) spawnGhost();
+      }
       state.enemies.splice(i,1);
     }
   }
@@ -2228,6 +2229,23 @@ function render() {
         state.particles.push({ x:e.x+Math.cos(a)*d, y:e.y+Math.sin(a)*d, vx:Math.cos(a)*30, vy:Math.sin(a)*30, life:0.4, color:'#fff', r:2 });
       }
     }
+    // ゴースト: 青白いオーラ + 下方向トレイル
+    if (e.type === 'ghost') {
+      const pulse = 1 + Math.sin(state.time*4 + e.wobble)*0.15;
+      ctx.fillStyle = `rgba(116,196,255,${0.35*pulse})`;
+      ctx.beginPath(); ctx.arc(e.x, e.y, e.r*1.7*pulse, 0, Math.PI*2); ctx.fill();
+      const grad = ctx.createLinearGradient(e.x, e.y+e.r, e.x, e.y+e.r+45);
+      grad.addColorStop(0, 'rgba(116,196,255,0.65)');
+      grad.addColorStop(1, 'rgba(116,196,255,0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.moveTo(e.x - e.r*0.7, e.y + e.r*0.5);
+      ctx.lineTo(e.x + e.r*0.7, e.y + e.r*0.5);
+      ctx.lineTo(e.x + e.r*0.3, e.y + e.r + 45);
+      ctx.lineTo(e.x - e.r*0.3, e.y + e.r + 45);
+      ctx.closePath();
+      ctx.fill();
+    }
     // 影
     ctx.fillStyle = 'rgba(0,0,0,0.3)';
     ctx.beginPath(); ctx.ellipse(e.x, e.y+e.r*0.8, e.r*0.8, e.r*0.25, 0, 0, Math.PI*2); ctx.fill();
@@ -2237,6 +2255,8 @@ function render() {
       grad.addColorStop(0, '#fffce0'); grad.addColorStop(0.3, '#ffd166'); grad.addColorStop(1, '#9a6c00');
     } else if (e.merged) {
       grad.addColorStop(0, '#fff'); grad.addColorStop(0.3, e.color); grad.addColorStop(1, '#1a0033');
+    } else if (e.type === 'ghost') {
+      grad.addColorStop(0, '#fff'); grad.addColorStop(0.3, '#a8d4ff'); grad.addColorStop(1, 'rgba(20,40,80,0.4)');
     } else {
       grad.addColorStop(0, '#fff'); grad.addColorStop(0.3, e.color); grad.addColorStop(1, '#000');
     }
@@ -2262,6 +2282,13 @@ function render() {
     // 口
     ctx.strokeStyle = '#000'; ctx.lineWidth = 2; ctx.lineCap = 'round';
     ctx.beginPath(); ctx.arc(e.x, e.y + e.r*0.3, e.r*0.2, 0.15, Math.PI-0.15); ctx.stroke();
+
+    // ゴースト: 黒い空洞の目（怖い顔で上書き）
+    if (e.type === 'ghost') {
+      ctx.fillStyle = '#000';
+      ctx.beginPath(); ctx.ellipse(e.x-eyeOff, eyeY, e.r*0.22, e.r*0.28, 0, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(e.x+eyeOff, eyeY, e.r*0.22, e.r*0.28, 0, 0, Math.PI*2); ctx.fill();
+    }
 
     // タイプ別装飾
     if (e.type === 'shooter') {
@@ -2695,18 +2722,35 @@ function spawnMiniBoss() {
   const t = state.time;
   const lane = Math.floor(Math.random()*3);
   const tier = Math.min(5, 1+Math.floor(t/40));
-  const rm = rageMul();
-  const hp = Math.ceil(Math.floor(550 + tier*280 + t*3.5) * rm);
-  const dmg = Math.ceil((35 + tier*8) * rm);
+  const hp = Math.floor(550 + tier*280 + t*3.5);
   state.enemies.push({
     type:'normal', lane, x:LANE_W*(lane+0.5), y:-50,
     r: 38 + tier*3,
     hp, maxHp: hp,
     speed: 36 + tier*5,
     color: '#e84393',
-    dmg, xp: 32 + tier*5, gold: 40 + tier*8,
+    dmg: 35 + tier*8, xp: 32 + tier*5, gold: 40 + tier*8,
     wobble: 0, hitFlash: 0, slowT: 0,
     miniBoss: true,
+  });
+  SFX.bossSpawn();
+}
+
+// ---- Ghost (revenge spirits from below) ----
+const GHOST_THRESHOLD = 4;  // この匹数を逃すごとに1体湧く
+function spawnGhost() {
+  const t = state.time;
+  const tier = Math.min(5, 1 + Math.floor(t / 40));
+  const lane = Math.floor(Math.random()*3);
+  const hp = Math.floor(60 + tier*30 + t*0.7);
+  state.enemies.push({
+    type:'ghost', lane, x:LANE_W*(lane+0.5), y:H + 30,
+    r: 18 + tier*1.5,
+    hp, maxHp: hp,
+    speed: -(100 + tier*10),  // 上向き
+    color: '#74c4ff',
+    dmg: 28 + tier*4, xp: 8 + tier*2, gold: 12 + tier*3,
+    wobble: Math.random()*Math.PI*2, hitFlash: 0, slowT: 0,
   });
   SFX.bossSpawn();
 }
